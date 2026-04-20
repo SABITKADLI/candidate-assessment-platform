@@ -23,3 +23,6 @@ logs/
 # postgres dumps / local
 *.sql.bak
 pgdata/
+
+# TS incremental build cache
+*.tsbuildinfo
