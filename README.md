@@ -4,57 +4,58 @@ Web-based two-stage developer assessment with anti-AI-agent proctoring.
 See `Project_information_` for full architecture.
 
 ## Status
-Bootstrapped: **DB schema only** (Phase 1, prompt 1).
+- **Phase 1** — DB schema (`db/`). Done.
+- **Phase 2** — Monorepo scaffold (`apps/`, `packages/`). Done.
 
-## Apply migrations
+## Layout
 
-```bash
-# local (Postgres 14+ recommended; tested on 16)
-createdb cap_dev
-for f in db/migrations/*.sql; do
-  psql -v ON_ERROR_STOP=1 -d cap_dev -f "$f"
-done
-
-# smoke test
-psql -v ON_ERROR_STOP=1 -d cap_dev -f db/seed/smoke.sql
+```
+apps/
+  candidate/      Next.js 15, port 3000, session-token boundary
+  recruiter/      Next.js 15, port 3001, Auth0 boundary
+packages/
+  shared/         enums + zod schemas mirroring DB enums
+  db/             postgres.js client singleton + audit helpers
+  config-ts/      shared tsconfig bases
+db/               migrations + smoke (Phase 1)
 ```
 
-Supabase: run the same files in SQL editor, in numeric order.
+## Run
 
-## Schema layout
+```bash
+# 1. install
+pnpm install
 
-| Schema      | Purpose                                                    |
-|-------------|------------------------------------------------------------|
-| `app`       | Domain tables: candidates, roles, sessions, attempts, etc. |
-| `telemetry` | High-volume proctoring events (daily range partitions).    |
-| `audit`     | Append-only hash-chained audit log.                        |
+# 2. point at a DB (see .env.example); apply migrations
+for f in db/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -d cap_dev -f "$f"; done
 
-### Key design decisions
+# 3. env per app
+cp .env.example apps/candidate/.env.local
+cp .env.example apps/recruiter/.env.local
 
-- **Telemetry partitioning**: daily `RANGE` on `ts`. Drops are O(metadata),
-  per-partition indexes stay small. No FK to `app.sessions` to keep the
-  write path fast — referential integrity enforced at ingress + retention.
-  `telemetry.ensure_partitions(days_ahead)` and
-  `telemetry.drop_old_partitions(retain_days)` handle maintenance; wire to
-  `pg_cron` (commented in `0003`) or run `db/ops/partition_maintenance.sql`
-  externally.
+# 4. dev both apps in parallel
+pnpm dev
+#   candidate  -> http://localhost:3000
+#   recruiter  -> http://localhost:3001
+```
 
-- **Audit hash chain**: `audit.audit_log_head` is a single locked row that
-  serializes inserts so concurrent writers can't fork the chain. Each row's
-  `row_hash = sha256(prev_hash || canonical(seq,id,actor,action,target,payload,ts))`.
-  UPDATE/DELETE blocked by trigger; revoke grants in production.
-  Verify with `SELECT * FROM audit.verify_chain();`. Always write via
-  `audit.log(actor, action, target, payload)`.
+## Auth boundaries
 
-- **Score multiplier**: `scores.proctoring_mult` constrained to `[0.5, 1.0]`
-  per the design doc — proctoring penalizes, never rewards.
+- **Candidate**: no login. `/s/[token]` validates an opaque `resume_token`
+  against `app.sessions`, mints an `httpOnly` `cap_sess` cookie, and
+  middleware gates everything else. Strict, short-lived, non-transferable.
+- **Recruiter**: Auth0 v4 handles `/auth/*` (login, callback, logout).
+  Middleware redirects unauthenticated users on all non-public routes.
+- Apps run on separate ports (and ultimately separate subdomains) so
+  cookies do not cross the boundary.
 
-- **Soft-uniqueness on email**: `email_norm` (generated lower-case) +
-  partial unique index. Avoided `citext` for portability.
+## Workspace packages
+
+- `@cap/shared` — keep enums/zod schemas in sync with `db/migrations/0001`.
+- `@cap/db` — `postgres` (postgres.js) singleton. Use `sql` for queries and
+  `auditLog(actor, action, target, payload)` for audit writes (never raw INSERT).
 
 ## Next prompts
-
-2. Next.js 15 monorepo scaffold (`apps/candidate`, `apps/recruiter`, `packages/shared`).
 3. Custom MCP server design.
 4. Docker+gVisor sandbox worker spec.
 5. Client-side anti-bot/agent detection module.
