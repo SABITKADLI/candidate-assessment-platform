@@ -8,7 +8,7 @@ export async function auditLog(
   payload: Record<string, unknown> = {},
 ): Promise<bigint> {
   const [row] = await sql<{ seq: string }[]>`
-    SELECT audit.log(${actor}, ${action}, ${target}, ${sql.json(payload)}) AS seq
+    SELECT audit.log(${actor}, ${action}, ${target}, ${sql.json(payload as never)}) AS seq
   `;
   // postgres.js returns bigint as string; normalize.
   return BigInt(row!.seq);
