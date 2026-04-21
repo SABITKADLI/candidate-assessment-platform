@@ -29,6 +29,9 @@ importers:
       '@cap/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@cap/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       bullmq:
         specifier: ^5.21.2
         version: 5.75.2
@@ -115,6 +118,9 @@ importers:
       '@cap/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@cap/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       next:
         specifier: ^15.5.0
         version: 15.5.15(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -252,6 +258,25 @@ importers:
       '@cap/config-ts':
         specifier: workspace:*
         version: link:../config-ts
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
+  packages/ui:
+    dependencies:
+      '@cap/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@cap/config-ts':
+        specifier: workspace:*
+        version: link:../config-ts
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.14
+      react:
+        specifier: ^19.0.0
+        version: 19.2.5
       typescript:
         specifier: ^5.6.3
         version: 5.9.3

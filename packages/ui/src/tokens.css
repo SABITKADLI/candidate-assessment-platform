@@ -1,0 +1,67 @@
+/* CAP Design Tokens - dark mode, IBM Plex */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --cap-bg:        #0d0f14;
+  --cap-surface:   #161b27;
+  --cap-surface-2: #1e2535;
+  --cap-surface-3: #252d42;
+
+  --cap-border:    #2a3248;
+  --cap-border-2:  #3b4565;
+
+  --cap-fg-1: #e8eaf0;
+  --cap-fg-2: #8b93a8;
+  --cap-fg-3: #4e5670;
+
+  --cap-accent:        #3b82f6;
+  --cap-accent-dim:    #1d4ed8;
+  --cap-accent-muted:  #1e3a6e;
+
+  --cap-danger:        #ef4444;
+  --cap-danger-muted:  #4c1212;
+  --cap-warning:       #f59e0b;
+  --cap-warning-muted: #4c3008;
+  --cap-success:       #22c55e;
+  --cap-success-muted: #0f3d21;
+  --cap-info:          #6366f1;
+  --cap-info-muted:    #1e1f5c;
+  --cap-critical:      #dc2626;
+  --cap-critical-muted:#3d0a0a;
+
+  --cap-font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --cap-font-mono: 'IBM Plex Mono', ui-monospace, 'Menlo', monospace;
+
+  --cap-radius-sm: 4px;
+  --cap-radius-md: 6px;
+  --cap-radius-lg: 8px;
+  --cap-radius-xl: 12px;
+
+  --cap-shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+  --cap-shadow-lg: 0 8px 32px rgba(0,0,0,0.6);
+
+  --cap-space-1: 4px;
+  --cap-space-2: 8px;
+  --cap-space-3: 12px;
+  --cap-space-4: 16px;
+  --cap-space-5: 20px;
+  --cap-space-6: 24px;
+  --cap-space-8: 32px;
+  --cap-space-12: 48px;
+  --cap-space-16: 64px;
+}
+
+html, body {
+  background: var(--cap-bg);
+  color: var(--cap-fg-1);
+  font-family: var(--cap-font-sans);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+.cap-focus:focus-visible {
+  outline: 2px solid var(--cap-accent);
+  outline-offset: 2px;
+}

@@ -2,7 +2,7 @@ import type { NextConfig } from 'next';
 
 const config: NextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@cap/shared', '@cap/db'],
+  transpilePackages: ['@cap/shared', '@cap/db', '@cap/ui', '@cap/antibot'],
   async headers() {
     return [
       {

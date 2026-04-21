@@ -1,86 +1,86 @@
-# phase 7 — stage completion handler
+# phase 9 — first stage UI (GMA)
 
-## Files added (extracted by the tar)
-- `packages/shared/src/queues.ts` — shared queue names + `ScoringJob` type
-- `apps/candidate/lib/queues.ts` — lazy BullMQ producer for the candidate app
-- `apps/candidate/app/api/stages/complete/route.ts` — the handler
+## What was added
+- `db/migrations/0006_gma_items.sql` — item bank + 15 seed items
+- `apps/candidate/lib/stage-complete.ts` — shared server helper; idempotent
+  stage completion + group detection + scoring enqueue
+- `apps/candidate/lib/gma.ts` — server-side GMA: session progress, item
+  selection, shuffled choices, grading, auto-terminate on deadline
+- `apps/candidate/app/api/stages/a_gma/next/route.ts` — the only endpoint
+  the player talks to: submit an answer, receive the next question or `done`
+- `apps/candidate/lib/GmaPlayer.tsx` — client player: countdown, choice
+  selection, submit loop
+- `apps/candidate/app/s/[token]/a_gma/page.tsx` — server-gated GMA page
+- `apps/candidate/app/s/[token]/page.tsx` — router: send to first
+  unfinished stage that has a UI
+- `scripts/new-session.sh` — one-shot dev session creator
 
-## Manual edits needed (tar can't safely merge package.json)
-
-1. Export the new submodule from `@cap/shared`:
-
-```diff
- // packages/shared/package.json
- "exports": {
-   ".": "./src/index.ts",
-   "./enums": "./src/enums.ts",
--  "./schemas": "./src/schemas.ts"
-+  "./schemas": "./src/schemas.ts",
-+  "./queues": "./src/queues.ts"
- }
-```
-
-2. Add BullMQ deps to the candidate app:
-
-```diff
- // apps/candidate/package.json
- "dependencies": {
-   "next": "^15.5.0",
-   "react": "^19.0.0",
-   "react-dom": "^19.0.0",
-   "@cap/shared": "workspace:*",
-   "@cap/db": "workspace:*",
-   "@cap/antibot": "workspace:*",
-+  "bullmq": "^5.21.2",
-+  "ioredis": "^5.4.1",
-   "zod": "^3.23.8"
- },
-```
-
-## Smoke test
+## Apply
 
 ```bash
-# from the project root, Postgres + Redis already running
-psql -h 127.0.0.1 -U cap -d cap_dev -c \
-  "INSERT INTO app.roles (name) VALUES ('backend') ON CONFLICT DO NOTHING;
-   WITH c AS (INSERT INTO app.candidates (email, consent_version, consent_ts)
-              VALUES ('t@x','v1',now()) RETURNING id)
-   INSERT INTO app.sessions (candidate_id, stage, resume_token, expires_at)
-   SELECT id, 'A', 'tok_' || gen_random_uuid()::text, now() + interval '2 hours'
-   FROM c RETURNING id, resume_token;"
+cd /workspaces/candidate-assessment-platform
+tar xzf cap-phase9.tar.gz && rm cap-phase9.tar.gz
 
-# open the resume link in a browser to get the cap_sess cookie
-# http://localhost:3000/s/<resume_token>
+# migration
+export PGPASSWORD=cap
+psql -h 127.0.0.1 -U cap -d cap_dev -v ON_ERROR_STOP=1 -f db/migrations/0006_gma_items.sql
 
-# then post to the handler (reuse the browser cookie with --cookie)
-curl -s -X POST http://localhost:3000/api/stages/complete \
-  -H 'Content-Type: application/json' \
-  --cookie "cap_sess=<session_uuid>" \
-  -d '{"stage_key":"A_GMA","payload":{"items_answered":50},"score":72.5}'
-# -> {"ok":true}
+chmod +x scripts/new-session.sh
+
+pnpm typecheck
+pnpm dev
 ```
 
-## Verify
+## End-to-end smoke
+
+```bash
+# in one terminal: pnpm dev
+# in another:
+./scripts/new-session.sh
+# -> http://localhost:3000/s/tok_xxxxxxxxxxxxxxxx
+
+# open that URL in a browser. You'll be redirected to /s/<tok>/a_gma.
+# Answer 10 questions (or wait 12 min). On finish, you'll see a summary.
+```
+
+## What actually happens on finish
+
+1. Client POSTs the last answer to `/api/stages/a_gma/next`.
+2. Server records it, grades all answers, computes `score = correct/total*100`.
+3. Server calls `completeStage(...)` which:
+   - Upserts the `stage_attempts` row with `score` + `completed_at`.
+   - Detects the full Stage-A group (only A_GMA has a UI yet; others haven't
+     completed, so **`stage_group_done` will be false** unless you manually
+     insert completed rows for the other A_* stages).
+   - Enqueues a `scoring-runs` BullMQ job IFF group is done.
+4. Client renders "Stage complete. X of Y correct. Score: Z."
+
+## To see the composite land in recruiter
+
+Because only A_GMA has a real UI, end-to-end composite requires faking the
+other A_* stages. Quick way:
 
 ```sql
-SELECT stage_key, score, completed_at FROM app.stage_attempts
- WHERE session_id = '<uuid>' ORDER BY completed_at;
+-- after GMA is complete, fake the rest of Stage A:
+INSERT INTO app.stage_attempts (session_id, stage_key, attempt_no, score, completed_at, started_at)
+SELECT s.id, k::app.stage_key, 1, 70, now(), now()
+FROM app.sessions s
+CROSS JOIN unnest(ARRAY['A_RESUME','A_ID_LIVENESS','A_BIG5','A_MBTI','A_RORSCHACH','A_INTEGRITY','A_SJT']) AS k
+WHERE s.id = '<session_uuid>'
+ON CONFLICT DO NOTHING;
 
-SELECT action, target, payload FROM audit.audit_log
- WHERE target = 'session:<uuid>' ORDER BY seq DESC LIMIT 5;
--- expect: stage.complete rows; scoring.enqueue only after the LAST stage in the group
+-- then trigger scoring directly (since no BullMQ in dev without Redis URL in candidate):
+UPDATE app.sessions SET status = 'completed', completed_at = now() WHERE id = '<session_uuid>';
 ```
 
-## Notes on the design
+If you set `REDIS_URL` in `apps/candidate/.env.local` too, the handler will
+actually enqueue the job and the scoring-worker (also Redis-gated) will pick
+it up and compute the composite.
 
-- The handler is stage-level, not question-level. One POST == one stage done.
-- Re-posting the same stage while in progress is idempotent — we ON CONFLICT
-  merge the payload and update score/duration. We do NOT enqueue scoring on
-  every POST; only when every stage in the group has `completed_at`.
-- Scoring enqueue is inside the same DB transaction as the attempt update and
-  the `stage.complete` audit entry. If BullMQ is unreachable, the stage still
-  commits; the job just isn't enqueued (audit records `job_id: null`). A
-  reconciler later can replay missing jobs; that's a future phase if needed.
-- No group-transition logic here (A→B). That's a separate handler: the
-  recruiter side invites the candidate to Stage B based on Stage A composite,
-  creating a new `app.sessions` row with `stage='B'`.
+## Known MVP limits
+- 15-item bank; `GMA_N_ITEMS = 10`. Swap both for production.
+- Choice order is shuffled per session, but the bank itself is tiny so item
+  repeat across sessions is certain.
+- No canvas-rendered prompts yet (anti-scraping) — plain text. Tracked for
+  the Cloudflare/FingerprintJS phase.
+- No per-question timer; only the global 12-minute cap.

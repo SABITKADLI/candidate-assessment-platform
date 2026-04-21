@@ -3,7 +3,7 @@ import type { NextConfig } from 'next';
 const config: NextConfig = {
   reactStrictMode: true,
   // Transpile workspace packages so TS sources resolve without a build step.
-  transpilePackages: ['@cap/shared', '@cap/db'],
+  transpilePackages: ['@cap/shared', '@cap/db', '@cap/ui', '@cap/antibot'],
   experimental: {
     // Keep server actions for forms; we still use API routes for webhooks.
     serverActions: { bodySizeLimit: '2mb' },

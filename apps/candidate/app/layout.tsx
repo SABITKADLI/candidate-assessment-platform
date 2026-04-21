@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
+import '@cap/ui/tokens.css';
 
 export const metadata = {
   title: 'Assessment',
-  // Avoid leaking info to link previewers/scrapers.
   robots: { index: false, follow: false },
 };
 

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import '@cap/ui/tokens.css';
 
 export const metadata = { title: 'Recruiter Console' };
 
