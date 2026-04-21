@@ -1,4 +1,4 @@
-import { safeNow } from './hash.js';
+import { safeNow } from './hash';
 
 // Per-keystroke dwell (down->up) and flight (down->next down) time samples.
 // We do not ship the keys themselves. Aggregation is per-batch: we emit a

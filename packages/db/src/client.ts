@@ -1,8 +1,10 @@
-import postgres from 'postgres';
+import pg from 'postgres';
 
-// Lazy pool. Module import never throws; connection creation deferred until
-// the first query runs. This lets workers guard their boot on env vars
-// without the DB module exploding on their `import` line.
+// postgres.js ships as CJS with a default export. webpack's ESM interop
+// sometimes surfaces it as { default: fn }, tsx does not — normalize.
+const postgres: typeof pg =
+  (pg as unknown as { default?: typeof pg }).default ?? pg;
+
 declare global {
   // eslint-disable-next-line no-var
   var __cap_sql: ReturnType<typeof postgres> | undefined;
@@ -20,17 +22,27 @@ function make() {
   });
 }
 
+function real(): ReturnType<typeof postgres> {
+  return globalThis.__cap_sql ?? (globalThis.__cap_sql = make());
+}
+
 type PG = ReturnType<typeof postgres>;
-export const sql = new Proxy({} as PG, {
-  get(_t, prop, receiver) {
-    const real = globalThis.__cap_sql ?? (globalThis.__cap_sql = make());
-    const v = Reflect.get(real, prop, receiver);
-    return typeof v === 'function' ? v.bind(real) : v;
-  },
+
+// Use a *function* as the proxy target so the `apply` trap fires for
+// tagged-template invocations (`sql`...``). Accessors like `sql.begin`
+// still route through `get`.
+const target = function () { /* proxied */ } as unknown as PG;
+
+export const sql: PG = new Proxy(target, {
   apply(_t, _thisArg, args) {
-    const real = globalThis.__cap_sql ?? (globalThis.__cap_sql = make());
-    return (real as unknown as (...a: unknown[]) => unknown)(...args);
+    return (real() as unknown as (...a: unknown[]) => unknown)(...args);
   },
+  get(_t, prop, receiver) {
+    const r = real();
+    const v = Reflect.get(r as object, prop, receiver);
+    return typeof v === 'function' ? v.bind(r) : v;
+  },
+  has(_t, prop) { return prop in (real() as object); },
 }) as PG;
 
 export type Sql = typeof sql;

@@ -1,5 +1,5 @@
-import { fnv1a } from './hash.js';
-import type { EnvSignals } from '../schema.js';
+import { fnv1a } from './hash';
+import type { EnvSignals } from '../schema';
 
 // All collectors are best-effort and silent on failure. We record *presence*
 // of defenses, not sensitive values. Everything runs once per batch cycle.

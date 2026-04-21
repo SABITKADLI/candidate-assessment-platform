@@ -1,8 +1,8 @@
-import type { SignalBatch, SignalEvent, IngestResponse } from '../schema.js';
+import type { SignalBatch, SignalEvent, IngestResponse } from '../schema';
 import type { StageKey } from '@cap/shared';
-import { collectEnv } from './env.js';
-import { DynamicsAggregator } from './dynamics.js';
-import { safeNow } from './hash.js';
+import { collectEnv } from './env';
+import { DynamicsAggregator } from './dynamics';
+import { safeNow } from './hash';
 
 export interface AntibotClientOptions {
   endpoint?: string;            // default: /api/antibot/ingest

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {
   STAGE_KEYS, STAGE_GROUPS, SESSION_STATUSES,
   ARTIFACT_KINDS, FLAG_SEVERITIES,
-} from './enums.js';
+} from './enums';
 
 export const zStageKey       = z.enum(STAGE_KEYS);
 export const zStageGroup     = z.enum(STAGE_GROUPS);

@@ -1,4 +1,4 @@
-import { sql } from './client.js';
+import { sql } from './client';
 
 /** Append a row to audit.audit_log via the SQL helper (hash chain enforced). */
 export async function auditLog(

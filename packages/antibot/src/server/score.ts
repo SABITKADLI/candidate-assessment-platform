@@ -1,4 +1,4 @@
-import type { SignalBatch, SignalEvent, EnvSignals } from '../schema.js';
+import type { SignalBatch, SignalEvent, EnvSignals } from '../schema';
 import type { FlagSeverity } from '@cap/shared';
 
 // ---- Score model ------------------------------------------------------------
