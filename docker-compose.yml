@@ -1,0 +1,56 @@
+# docker-compose.yml — local dev stack for candidate-assessment-platform
+# Usage:
+#   docker compose up -d        → start all services
+#   docker compose down         → stop all services
+#   docker compose down -v      → stop + wipe all volumes (fresh DB)
+#
+# After starting, apply migrations:
+#   bash:       for f in db/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -d cap_dev -f "$f"; done
+#   powershell: Get-ChildItem db/migrations/*.sql | ForEach-Object { psql -v ON_ERROR_STOP=1 -d cap_dev -f $_.FullName }
+#
+# Then seed smoke data (optional):
+#   psql -d cap_dev -f db/seed/smoke.sql
+#
+# Apps run on your host (not in Docker):
+#   pnpm dev   →  candidate: http://localhost:3000  |  recruiter: http://localhost:3001
+
+services:
+
+  # ── Postgres ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: cap-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cap
+      POSTGRES_PASSWORD: cap
+      POSTGRES_DB: cap_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cap -d cap_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Redis (needed for MCP server + workers — Phase 3+) ───────────────────
+  # Uncomment when you start working on the MCP server or sandbox/scoring workers.
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: cap-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 10
+
+volumes:
+  postgres_data:
+  # redis_data:   # uncomment with the redis service above
