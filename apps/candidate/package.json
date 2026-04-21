@@ -17,7 +17,8 @@
     "react-dom": "^19.0.0",
     "@cap/shared": "workspace:*",
     "@cap/db": "workspace:*",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "@cap/antibot": "workspace:*"
   },
   "devDependencies": {
     "@cap/config-ts": "workspace:*",

@@ -1,3 +1,8 @@
+if (!process.env.AUTH0_ISSUER || !process.env.AUTH0_AUDIENCE || !process.env.DATABASE_URL) {
+  console.warn('[mcp-server] AUTH0_ISSUER/AUDIENCE/DATABASE_URL unset — skipping dev boot');
+  process.exit(0);
+}
+
 import express, { type Request, type Response } from 'express';
 import pino from 'pino';
 import pinoHttp from 'pino-http';

@@ -1,7 +1,8 @@
 import postgres from 'postgres';
 
-// Single shared connection pool per Node process. Next.js route handlers
-// re-import this module; the singleton avoids pool explosion in dev HMR.
+// Lazy pool. Module import never throws; connection creation deferred until
+// the first query runs. This lets workers guard their boot on env vars
+// without the DB module exploding on their `import` line.
 declare global {
   // eslint-disable-next-line no-var
   var __cap_sql: ReturnType<typeof postgres> | undefined;
@@ -15,12 +16,21 @@ function make() {
     idle_timeout: 20,
     connect_timeout: 10,
     prepare: true,
-    // Map Postgres timestamptz -> Date automatically (default), keep jsonb as object.
     types: {},
   });
 }
 
-export const sql = globalThis.__cap_sql ?? make();
-if (process.env.NODE_ENV !== 'production') globalThis.__cap_sql = sql;
+type PG = ReturnType<typeof postgres>;
+export const sql = new Proxy({} as PG, {
+  get(_t, prop, receiver) {
+    const real = globalThis.__cap_sql ?? (globalThis.__cap_sql = make());
+    const v = Reflect.get(real, prop, receiver);
+    return typeof v === 'function' ? v.bind(real) : v;
+  },
+  apply(_t, _thisArg, args) {
+    const real = globalThis.__cap_sql ?? (globalThis.__cap_sql = make());
+    return (real as unknown as (...a: unknown[]) => unknown)(...args);
+  },
+}) as PG;
 
 export type Sql = typeof sql;

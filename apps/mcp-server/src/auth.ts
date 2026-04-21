@@ -16,9 +16,11 @@ import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
 //
 // Anything else -> 403.
 
-const ISSUER   = requireEnv('AUTH0_ISSUER');              // e.g. https://tenant.us.auth0.com/
-const AUDIENCE = requireEnv('AUTH0_AUDIENCE');            // API identifier in Auth0
-const JWKS = createRemoteJWKSet(new URL(`${ISSUER.replace(/\/$/, '')}/.well-known/jwks.json`));
+const ISSUER   = process.env.AUTH0_ISSUER   ?? '';
+const AUDIENCE = process.env.AUTH0_AUDIENCE ?? '';
+const JWKS = ISSUER
+  ? createRemoteJWKSet(new URL(`${ISSUER.replace(/\/$/, '')}/.well-known/jwks.json`))
+  : null;
 
 export interface Principal {
   sub: string;
@@ -34,6 +36,7 @@ declare global {
 }
 
 export async function verifyBearer(req: Request): Promise<Principal> {
+  if (!JWKS) throw new AuthError(503, 'auth_not_configured');
   const h = req.headers.authorization ?? '';
   const m = /^Bearer\s+(.+)$/.exec(h);
   if (!m) throw new AuthError(401, 'missing_token');
