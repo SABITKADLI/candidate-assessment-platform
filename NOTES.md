@@ -1,86 +1,125 @@
-# phase 9 — first stage UI (GMA)
+# phase 10 — anti-AI hardening (web-only, MVP subset)
 
 ## What was added
-- `db/migrations/0006_gma_items.sql` — item bank + 15 seed items
-- `apps/candidate/lib/stage-complete.ts` — shared server helper; idempotent
-  stage completion + group detection + scoring enqueue
-- `apps/candidate/lib/gma.ts` — server-side GMA: session progress, item
-  selection, shuffled choices, grading, auto-terminate on deadline
-- `apps/candidate/app/api/stages/a_gma/next/route.ts` — the only endpoint
-  the player talks to: submit an answer, receive the next question or `done`
-- `apps/candidate/lib/GmaPlayer.tsx` — client player: countdown, choice
-  selection, submit loop
-- `apps/candidate/app/s/[token]/a_gma/page.tsx` — server-gated GMA page
-- `apps/candidate/app/s/[token]/page.tsx` — router: send to first
-  unfinished stage that has a UI
-- `scripts/new-session.sh` — one-shot dev session creator
+
+- `.env.example` — Turnstile keys (`NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`)
+- `apps/candidate/lib/turnstile.ts` — server verification helper (soft-fail in dev)
+- `apps/candidate/lib/TurnstileWidget.tsx` — client widget loader
+- `apps/candidate/lib/CanvasPrompt.tsx` — canvas-rendered question text with
+  per-item jitter + noise (blocks DOM scraping)
+- `apps/candidate/lib/TapSeqPuzzle.tsx` — tap-5-dots-in-order modal puzzle
+- `apps/candidate/lib/AntibotBoot.tsx` — now puzzle-aware; renders the modal
+  when the server attaches a puzzle to an ingest response
+- `apps/candidate/lib/GmaPlayer.tsx` — swaps the text prompt for `CanvasPrompt`
+- `apps/candidate/app/s/[token]/route.ts` — Turnstile gate (redirects to
+  `/s/[token]/challenge` when enabled + `cap_turnstile` cookie missing)
+- `apps/candidate/app/s/[token]/challenge/page.tsx` — challenge page
+- `apps/candidate/app/s/[token]/a_gma/page.tsx` — mounts `<AntibotBoot />`
+- `apps/candidate/app/api/turnstile/verify/route.ts` — siteverify + issues
+  `cap_turnstile` cookie; audit-logs pass/fail
+- `apps/candidate/app/api/antibot/ingest/route.ts` — attaches `puzzle` to
+  response on `seq === 2` or when 2+ medium/high flags in the batch
+- `apps/candidate/middleware.ts` — adds `/s/*/challenge` and
+  `/api/turnstile/verify` to public paths
 
 ## Apply
 
 ```bash
 cd /workspaces/candidate-assessment-platform
-tar xzf cap-phase9.tar.gz && rm cap-phase9.tar.gz
+tar xzf cap-phase10.tar.gz && rm cap-phase10.tar.gz
 
-# migration
-export PGPASSWORD=cap
-psql -h 127.0.0.1 -U cap -d cap_dev -v ON_ERROR_STOP=1 -f db/migrations/0006_gma_items.sql
-
-chmod +x scripts/new-session.sh
-
+# no new migrations; no new deps
 pnpm typecheck
 pnpm dev
 ```
 
-## End-to-end smoke
+## Config
+
+Turnstile is off by default (soft-fail). Keys unset → `/s/[token]` mints
+`cap_sess` directly, exactly like phase 9. To enable:
 
 ```bash
-# in one terminal: pnpm dev
-# in another:
+# apps/candidate/.env.local
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=0xAAAAAAAAAAAAAAAAA
+TURNSTILE_SECRET_KEY=0xBBBBBBBBBBBBBBBBBB
+```
+
+CF provides always-pass test keys for local dev:
+<https://developers.cloudflare.com/turnstile/troubleshooting/testing/>
+
+## Flow (with Turnstile enabled)
+
+1. `/s/tok_xxx` → route handler sees no `cap_turnstile` cookie → redirects to
+   `/s/tok_xxx/challenge`
+2. Challenge page loads Turnstile JS, renders widget
+3. User solves → widget callback POSTs `{token, resume_token}` to
+   `/api/turnstile/verify`
+4. Verify endpoint: CF siteverify → sets `cap_turnstile` (1h, httpOnly) →
+   returns `{ok, redirect: '/s/tok_xxx'}`
+5. Client does `window.location = redirect`
+6. `/s/tok_xxx` now passes the Turnstile gate → mints `cap_sess` → redirects
+   to the next unfinished stage
+7. GMA page mounts `AntibotBoot` → `@cap/antibot/client` starts streaming
+   batches to `/api/antibot/ingest`
+8. On `seq === 2` the server responds with a `puzzle` → client shows
+   `TapSeqPuzzle` modal → user solves or fails → events emitted back through
+   the next batch (`puzzle.shown` / `.solved` / `.failed`)
+
+## Puzzle scoring
+
+- `puzzle.failed` already penalized by `@cap/antibot/server/score` (-6,
+  severity=high).
+- `puzzle.solved` is recorded as telemetry but not rewarded (we don't buy
+  back score; clean sessions start near 100).
+- Only one puzzle in flight at a time — `AntibotBoot` tracks a ref and
+  ignores new server-emitted puzzles until the current one closes.
+
+## Canvas prompts — accessibility trade-off
+
+Question text lives inside a `<canvas>`, unreadable by screen readers and
+un-scrapable from the DOM. For production:
+
+- Offer an explicit accessibility mode that swaps in DOM text (gated on
+  stronger upstream filtering, e.g. Cloudflare Bot Management score +
+  FingerprintJS visitorId).
+- Or provide audio-only prompts as an alt path.
+
+MVP ships with canvas-only; `aria-label="Question prompt"` tells assistive
+tech a prompt exists without giving its content.
+
+## Smoke test (no Turnstile keys)
+
+```bash
 ./scripts/new-session.sh
-# -> http://localhost:3000/s/tok_xxxxxxxxxxxxxxxx
-
-# open that URL in a browser. You'll be redirected to /s/<tok>/a_gma.
-# Answer 10 questions (or wait 12 min). On finish, you'll see a summary.
+# open printed URL; should redirect straight to /s/<tok>/a_gma
+# - prompt text renders as canvas (inspect element; no text in DOM)
+# - devtools network tab: POST /api/antibot/ingest every 5s
+# - after ~10s (seq=2), tap-seq modal appears
+# - tap dots 1..5 in order → modal closes → GMA continues
 ```
 
-## What actually happens on finish
+## Smoke test (Turnstile test keys)
 
-1. Client POSTs the last answer to `/api/stages/a_gma/next`.
-2. Server records it, grades all answers, computes `score = correct/total*100`.
-3. Server calls `completeStage(...)` which:
-   - Upserts the `stage_attempts` row with `score` + `completed_at`.
-   - Detects the full Stage-A group (only A_GMA has a UI yet; others haven't
-     completed, so **`stage_group_done` will be false** unless you manually
-     insert completed rows for the other A_* stages).
-   - Enqueues a `scoring-runs` BullMQ job IFF group is done.
-4. Client renders "Stage complete. X of Y correct. Score: Z."
+```bash
+# apps/candidate/.env.local
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA   # CF always-pass
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
 
-## To see the composite land in recruiter
-
-Because only A_GMA has a real UI, end-to-end composite requires faking the
-other A_* stages. Quick way:
-
-```sql
--- after GMA is complete, fake the rest of Stage A:
-INSERT INTO app.stage_attempts (session_id, stage_key, attempt_no, score, completed_at, started_at)
-SELECT s.id, k::app.stage_key, 1, 70, now(), now()
-FROM app.sessions s
-CROSS JOIN unnest(ARRAY['A_RESUME','A_ID_LIVENESS','A_BIG5','A_MBTI','A_RORSCHACH','A_INTEGRITY','A_SJT']) AS k
-WHERE s.id = '<session_uuid>'
-ON CONFLICT DO NOTHING;
-
--- then trigger scoring directly (since no BullMQ in dev without Redis URL in candidate):
-UPDATE app.sessions SET status = 'completed', completed_at = now() WHERE id = '<session_uuid>';
+./scripts/new-session.sh
+# visit URL → /s/<tok>/challenge → widget auto-passes → back to /s/<tok> →
+# /s/<tok>/a_gma. cap_turnstile cookie visible in devtools.
 ```
 
-If you set `REDIS_URL` in `apps/candidate/.env.local` too, the handler will
-actually enqueue the job and the scoring-worker (also Redis-gated) will pick
-it up and compute the composite.
+## Not included (tracked for later phases)
 
-## Known MVP limits
-- 15-item bank; `GMA_N_ITEMS = 10`. Swap both for production.
-- Choice order is shuffled per session, but the bank itself is tiny so item
-  repeat across sessions is certain.
-- No canvas-rendered prompts yet (anti-scraping) — plain text. Tracked for
-  the Cloudflare/FingerprintJS phase.
-- No per-question timer; only the global 12-minute cap.
+- Webcam ML (face count, gaze, phone detection) — stub events already accepted
+  by the scorer; hook MediaPipe/YOLO-nano in a later phase.
+- `drag` and `rotate` puzzle kinds — schema supports them, only `tap_seq`
+  is implemented. Server only emits `tap_seq` for now.
+- FingerprintJS Pro integration — `env.ts` in `@cap/antibot/client` already
+  computes canvas/webgl/audio fingerprints; Pro visitorId is a separate
+  server-side call.
+- Cloudflare WAF + Bot Management edge rules — deployment concern, not code.
+- Per-stage Turnstile re-challenge — current implementation challenges once
+  per session-entry (1h cookie). Spec asks for "every stage transition";
+  deferrable since only one stage has a UI today.

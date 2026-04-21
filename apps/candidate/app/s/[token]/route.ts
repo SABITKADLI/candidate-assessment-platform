@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@cap/db';
 import { zResumeToken } from '@cap/shared/schemas';
 import type { SessionStatus, StageGroup, StageKey } from '@cap/shared/enums';
+import { turnstileEnabled } from '@/lib/turnstile';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -41,6 +42,13 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
   if (session.expires_at < new Date()) return redirect(req, '/?reason=expired');
   if (['completed','expired','abandoned','disqualified'].includes(session.status)) {
     return redirect(req, `/?reason=${session.status}`);
+  }
+
+  // Turnstile gate. If configured and the caller hasn't proven humanity yet,
+  // bounce to the challenge page. Soft-fail in dev (turnstileEnabled=false)
+  // just falls through to the session mint below.
+  if (turnstileEnabled && !req.cookies.get('cap_turnstile')?.value) {
+    return NextResponse.redirect(new URL(`/s/${token}/challenge`, req.url));
   }
 
   // Find next unfinished stage.

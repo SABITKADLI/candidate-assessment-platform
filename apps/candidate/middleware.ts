@@ -7,8 +7,15 @@ import { NextRequest, NextResponse } from 'next/server';
 // presence/shape only; per-token DB checks (expiry, status, IP binding)
 // happen inside the `/s/[token]` route so we can render a proper error page.
 //
-// Public paths: marketing root + healthcheck + stage-token entry.
-const PUBLIC = [/^\/$/, /^\/api\/health$/, /^\/s\/[A-Za-z0-9_-]+$/];
+// Public paths: marketing root, healthcheck, stage-token entry, and the two
+// Turnstile endpoints that run before a session cookie is ever minted.
+const PUBLIC = [
+  /^\/$/,
+  /^\/api\/health$/,
+  /^\/api\/turnstile\/verify$/,
+  /^\/s\/[A-Za-z0-9_-]+$/,
+  /^\/s\/[A-Za-z0-9_-]+\/challenge$/,
+];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

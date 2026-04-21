@@ -3,7 +3,7 @@ set -euo pipefail
 EMAIL="${1:-dev-$(date +%s)@example.com}"
 BASE="${CANDIDATE_BASE_URL:-http://localhost:3000}"
 
-PGPASSWORD=cap psql -h 127.0.0.1 -U cap -d cap_dev -At -c "
+docker exec cap-postgres psql -U cap -d cap_dev -At -c "
 INSERT INTO app.roles (name) VALUES ('backend') ON CONFLICT (name) DO NOTHING;
 WITH c AS (
   INSERT INTO app.candidates (email, consent_version, consent_ts)

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { cookies, headers } from 'next/headers';
+import { randomUUID } from 'node:crypto';
 import { sql } from '@cap/db';
 import { zSignalBatch, scoreBatch, type IngestResponse } from '@cap/antibot/server';
 
@@ -16,6 +17,7 @@ export const runtime = 'nodejs';
  *   3. Persist every event into telemetry.telemetry_events (partitioned).
  *   4. Run a fast scoring pass, insert proctoring_flags, adjust the score
  *      multiplier in app.scores (capped so a single batch can't terminate).
+ *   5. Optionally attach a puzzle challenge to the response.
  *
  * We deliberately respond with { ok: true } even for low-severity flags;
  * never tell the client it has been detected.
@@ -93,7 +95,17 @@ export async function POST(req: NextRequest) {
     }
   });
 
+  // 5. Puzzle decision. Deterministic trigger on seq === 2 (~10s into the
+  // stage; lets the user orient before interrupting). Additional trigger when
+  // this batch flagged two or more real signals. Never more than one puzzle
+  // in flight per session — the client gates on that, we just emit.
   const res: IngestResponse = { ok: true };
+  const shouldChallenge =
+    batch.seq === 2 ||
+    (score.flags.filter((f) => f.severity === 'medium' || f.severity === 'high').length >= 2);
+  if (shouldChallenge) {
+    res.puzzle = { kind: 'tap_seq', seed: randomUUID() };
+  }
   return Response.json(res);
 }
 

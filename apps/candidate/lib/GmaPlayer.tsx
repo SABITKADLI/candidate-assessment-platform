@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, ProgressBar } from '@cap/ui';
+import { CanvasPrompt } from './CanvasPrompt';
 
 type Item = {
   item_id: string;
@@ -110,17 +111,8 @@ export function GmaPlayer() {
           detail={`${timeStr} remaining · ${item.category}`}
         />
       </div>
-      <div
-        style={{
-          fontSize: 16, lineHeight: 1.5, color: 'var(--cap-fg-1)',
-          background: 'var(--cap-surface-2)',
-          padding: 'var(--cap-space-5)',
-          borderRadius: 'var(--cap-radius-md)',
-          border: '1px solid var(--cap-border)',
-          marginBottom: 16,
-        }}
-      >
-        {item.prompt}
+      <div style={{ marginBottom: 16 }}>
+        <CanvasPrompt text={item.prompt} seed={item.item_id} />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {item.choices.map((c, i) => {

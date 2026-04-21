@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { sql } from '@cap/db';
 import { StageShell } from '@cap/ui';
 import { GmaPlayer } from '@/lib/GmaPlayer';
+import { AntibotBoot } from '@/lib/AntibotBoot';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,12 +22,15 @@ export default async function GmaPage() {
   if (session.status === 'completed') redirect('/?reason=completed');
 
   return (
-    <StageShell
-      stageKey="A_GMA"
-      title="General mental ability"
-      subtitle="10 questions. 12 minutes. Answer in order; you cannot go back. Do not switch tabs."
-    >
-      <GmaPlayer />
-    </StageShell>
+    <>
+      <AntibotBoot stageKey="A_GMA" />
+      <StageShell
+        stageKey="A_GMA"
+        title="General mental ability"
+        subtitle="10 questions. 12 minutes. Answer in order; you cannot go back. Do not switch tabs."
+      >
+        <GmaPlayer />
+      </StageShell>
+    </>
   );
 }
