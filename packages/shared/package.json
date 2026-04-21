@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./enums": "./src/enums.ts",
-    "./schemas": "./src/schemas.ts"
+    "./schemas": "./src/schemas.ts",
+    "./queues": "./src/queues.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
