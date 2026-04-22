@@ -14,9 +14,15 @@ const ORDER: Record<StageGroup, StageKey[]> = {
   B: ['B_CODING','B_DEBUG','B_WORK_SAMPLE','B_ASYNC_VIDEO','B_VERBAL'],
 };
 
-// MVP: only A_GMA has a real UI. Others redirect to /welcome.
 const STAGE_ROUTES: Partial<Record<StageKey, string>> = {
+  A_RESUME: 'a_resume',
+  A_ID_LIVENESS: 'a_id_liveness',
   A_GMA: 'a_gma',
+  A_BIG5: 'a_big5',
+  A_MBTI: 'a_mbti',
+  A_RORSCHACH: 'a_rorschach',
+  A_INTEGRITY: 'a_integrity',
+  A_SJT: 'a_sjt',
 };
 
 type SessionRow = {
