@@ -26,6 +26,13 @@ export function MbtiPlayer() {
     setPhase('submitting');
 
     const { type, scores } = scoreMbti(answers);
+    // Clarity score: average decisiveness across all 4 dimensions (0=split, 100=all one way).
+    const clarityScore = Math.round(
+      Object.values(scores).reduce((sum, { a, b }) => {
+        const total = a + b || 1;
+        return sum + (Math.abs(a - b) / total) * 100;
+      }, 0) / 4
+    );
     const res = await fetch('/api/stages/complete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -33,6 +40,7 @@ export function MbtiPlayer() {
       body: JSON.stringify({
         stage_key: 'A_MBTI',
         payload: { answers, type, scores },
+        score: clarityScore,
       }),
     });
 

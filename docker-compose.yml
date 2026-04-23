@@ -35,22 +35,21 @@ services:
       timeout: 5s
       retries: 10
 
-  # ── Redis (needed for MCP server + workers — Phase 3+) ───────────────────
-  # Uncomment when you start working on the MCP server or sandbox/scoring workers.
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: cap-redis
-  #   restart: unless-stopped
-  #   ports:
-  #     - "6379:6379"
-  #   volumes:
-  #     - redis_data:/data
-  #   healthcheck:
-  #     test: ["CMD", "redis-cli", "ping"]
-  #     interval: 5s
-  #     timeout: 5s
-  #     retries: 10
+  # ── Redis (BullMQ queues for sandbox + scoring workers) ──────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: cap-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
   postgres_data:
-  # redis_data:   # uncomment with the redis service above
+  redis_data:

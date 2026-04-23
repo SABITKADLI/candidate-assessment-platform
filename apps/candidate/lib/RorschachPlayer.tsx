@@ -74,11 +74,23 @@ export function RorschachPlayer() {
 
   async function submit(finalResponses: Record<string, string>) {
     setPhase('submitting');
+    // Richness proxy: average word-count score per card (40 words = 100).
+    const vals = Object.values(finalResponses);
+    const richnessScore = vals.length > 0
+      ? Math.round(vals.reduce((sum, text) => {
+          const words = text.trim().split(/\s+/).filter(Boolean).length;
+          return sum + Math.min((words / 40) * 100, 100);
+        }, 0) / vals.length)
+      : 0;
     const res = await fetch('/api/stages/complete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ stage_key: 'A_RORSCHACH', payload: { responses: finalResponses } }),
+      body: JSON.stringify({
+        stage_key: 'A_RORSCHACH',
+        payload: { responses: finalResponses },
+        score: richnessScore,
+      }),
     });
     if (!res.ok) {
       const j = await res.json().catch(() => ({})) as { error?: string };

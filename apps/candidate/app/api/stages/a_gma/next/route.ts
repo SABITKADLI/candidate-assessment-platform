@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { z } from 'zod';
 import { nextStep } from '@/lib/gma';
+import { rateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -14,6 +15,9 @@ const zBody = z.object({
 });
 
 export async function POST(req: Request) {
+  const limited = await rateLimit(req, 'a_gma_next', 120, 60);
+  if (limited) return limited;
+
   const jar = await cookies();
   const sessionId = jar.get('cap_sess')?.value;
   if (!sessionId) return json({ error: 'no_session' }, 401);

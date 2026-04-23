@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { sql, auditLog } from '@cap/db';
 import { enqueueSandbox } from '@/lib/queues';
 import { B_CODING_PROBLEM } from '@/lib/coding-problems';
+import { rateLimit } from '@/lib/rate-limit';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -18,6 +19,9 @@ const STAGE_B_ORDER = [
 ] as const;
 
 export async function POST(req: Request) {
+  const limited = await rateLimit(req, 'b_coding_submit', 15, 60);
+  if (limited) return limited;
+
   let body: unknown;
   try { body = await req.json(); } catch { return bad('bad_json'); }
   const parsed = zBody.safeParse(body);

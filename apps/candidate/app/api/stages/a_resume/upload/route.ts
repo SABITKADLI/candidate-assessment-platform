@@ -3,6 +3,7 @@ import { sql, auditLog } from '@cap/db';
 import { createHash, randomUUID } from 'crypto';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
+import { rateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -14,6 +15,9 @@ const ALLOWED_TYPES = new Set([
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
 export async function POST(req: Request) {
+  const limited = await rateLimit(req, 'a_resume_upload', 5, 60);
+  if (limited) return limited;
+
   const jar = await cookies();
   const sessionId = jar.get('cap_sess')?.value;
   if (!sessionId) return unauth();
@@ -42,20 +46,24 @@ export async function POST(req: Request) {
   const ext = file.type === 'application/pdf' ? 'pdf' : 'docx';
   const filename = `${randomUUID()}.${ext}`;
 
-  // Dev: write to local disk. Prod: swap this block for S3 PutObject.
   const uploadDir = process.env.UPLOAD_DIR ?? join(process.cwd(), '..', '..', '.uploads');
   await mkdir(uploadDir, { recursive: true });
   const localPath = join(uploadDir, filename);
   await writeFile(localPath, buf);
 
-  // s3_key stores the local path in dev; the real S3 key in prod.
-  const s3Key = process.env.S3_BUCKET
-    ? `resumes/${filename}`
-    : localPath;
+  const s3Key = process.env.S3_BUCKET ? `resumes/${filename}` : localPath;
 
   const artifacts = await sql<Array<{ id: string }>>`
-    INSERT INTO app.artifacts (session_id, kind, s3_key, hash)
-    VALUES (${sessionId}::uuid, 'resume', ${s3Key}, ${hash})
+    INSERT INTO app.artifacts (session_id, stage_key, kind, s3_key, sha256, size_bytes, mime_type)
+    VALUES (
+      ${sessionId}::uuid,
+      'A_RESUME'::app.stage_key,
+      'resume',
+      ${s3Key},
+      decode(${hash}, 'hex'),
+      ${file.size},
+      ${file.type}
+    )
     RETURNING id
   `;
   const artifact = artifacts[0];

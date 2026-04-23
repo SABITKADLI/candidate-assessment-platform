@@ -23,6 +23,11 @@ const STAGE_ROUTES: Partial<Record<StageKey, string>> = {
   A_RORSCHACH: 'a_rorschach',
   A_INTEGRITY: 'a_integrity',
   A_SJT: 'a_sjt',
+  B_CODING: 'b_coding',
+  B_DEBUG: 'b_debug',
+  B_WORK_SAMPLE: 'b_work_sample',
+  B_ASYNC_VIDEO: 'b_async_video',
+  B_VERBAL: 'b_verbal',
 };
 
 type SessionRow = {

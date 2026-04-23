@@ -1,6 +1,6 @@
 import { auth0, auth0Configured } from '@/lib/auth0';
 import { sql } from '@cap/db';
-import { Sidebar, StatCard } from '@cap/ui';
+import { Sidebar, StatCard, Button } from '@cap/ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,13 +44,16 @@ export default async function Dashboard() {
         }
       />
       <main style={{ flex: 1, padding: 'var(--cap-space-8)' }}>
-        <header style={{ marginBottom: 'var(--cap-space-8)' }}>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600 }}>Dashboard</h1>
-          <p style={{
-            margin: '4px 0 0', fontSize: 13, color: 'var(--cap-fg-2)',
-          }}>
-            Welcome, {session?.user.name ?? 'recruiter'}.
-          </p>
+        <header style={{ marginBottom: 'var(--cap-space-8)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600 }}>Dashboard</h1>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--cap-fg-2)' }}>
+              Welcome, {session?.user.name ?? 'recruiter'}.
+            </p>
+          </div>
+          <a href="/dashboard/new" style={{ textDecoration: 'none' }}>
+            <Button variant="primary">+ New session</Button>
+          </a>
         </header>
         <section style={{
           display: 'grid',

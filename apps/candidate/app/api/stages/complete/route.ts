@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { sql, auditLog } from '@cap/db';
 import { zStageKey, STAGE_GROUP_OF, type StageGroup, type StageKey } from '@cap/shared';
 import { enqueueScoring } from '@/lib/queues';
+import { rateLimit } from '@/lib/rate-limit';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -33,6 +34,9 @@ const STAGE_B_ORDER: StageKey[] = [
 ];
 
 export async function POST(req: Request) {
+  const limited = await rateLimit(req, 'stage_complete', 20, 60);
+  if (limited) return limited;
+
   let body: unknown;
   try { body = await req.json(); } catch { return bad('bad_json'); }
   const parsed = zBody.safeParse(body);

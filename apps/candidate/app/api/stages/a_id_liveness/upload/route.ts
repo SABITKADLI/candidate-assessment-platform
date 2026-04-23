@@ -3,6 +3,7 @@ import { sql, auditLog } from '@cap/db';
 import { createHash, randomUUID } from 'crypto';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
+import { rateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -10,6 +11,9 @@ export const runtime = 'nodejs';
 const MAX_BYTES = 4 * 1024 * 1024; // 4 MB per image
 
 export async function POST(req: Request) {
+  const limited = await rateLimit(req, 'a_id_liveness_upload', 5, 60);
+  if (limited) return limited;
+
   const jar = await cookies();
   const sessionId = jar.get('cap_sess')?.value;
   if (!sessionId) return unauth();
@@ -39,8 +43,8 @@ export async function POST(req: Request) {
   const sid: string = sessionId;
 
   const [idArtifact, livenessArtifact] = await Promise.all([
-    saveFrame(sid, idPhoto, uploadDir),
-    saveFrame(sid, livenessFrame, uploadDir),
+    saveFrame(sid, idPhoto, uploadDir, 'A_ID_LIVENESS'),
+    saveFrame(sid, livenessFrame, uploadDir, 'A_ID_LIVENESS'),
   ]);
 
   await auditLog('candidate-app', 'id_liveness.upload', `session:${sessionId}`, {
@@ -51,7 +55,7 @@ export async function POST(req: Request) {
   return Response.json({ ok: true, id_artifact_id: idArtifact.id, liveness_artifact_id: livenessArtifact.id });
 }
 
-async function saveFrame(sid: string, file: File, uploadDir: string) {
+async function saveFrame(sid: string, file: File, uploadDir: string, stageKey: string) {
   const buf = Buffer.from(await file.arrayBuffer());
   const hash = createHash('sha256').update(buf).digest('hex');
   const filename = `${randomUUID()}.jpg`;
@@ -59,8 +63,16 @@ async function saveFrame(sid: string, file: File, uploadDir: string) {
   await writeFile(localPath, buf);
   const s3Key = process.env.S3_BUCKET ? `liveness/${filename}` : localPath;
   const rows = await sql<Array<{ id: string }>>`
-    INSERT INTO app.artifacts (session_id, kind, s3_key, hash)
-    VALUES (${sid}::uuid, 'liveness', ${s3Key}, ${hash})
+    INSERT INTO app.artifacts (session_id, stage_key, kind, s3_key, sha256, size_bytes, mime_type)
+    VALUES (
+      ${sid}::uuid,
+      ${stageKey}::app.stage_key,
+      'liveness',
+      ${s3Key},
+      decode(${hash}, 'hex'),
+      ${buf.byteLength},
+      'image/jpeg'
+    )
     RETURNING id
   `;
   return { id: rows[0]?.id ?? '', hash };
