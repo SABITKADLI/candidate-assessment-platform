@@ -4,12 +4,58 @@ import { Sidebar, Card } from '@cap/ui';
 
 export const dynamic = 'force-dynamic';
 
-function Row({ label, value }: { label: string; value: string }) {
+function ConfigRow({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, padding: '10px 0', borderBottom: '1px solid var(--cap-border)' }}>
-      <span style={{ width: 180, flexShrink: 0, fontSize: 12, color: 'var(--cap-fg-3)', fontWeight: 500 }}>{label}</span>
-      <span style={{ fontSize: 13, fontFamily: 'var(--cap-font-mono)', color: 'var(--cap-fg-1)', wordBreak: 'break-all' }}>{value}</span>
+    <div style={{
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: 16,
+      padding: '11px 0',
+      borderBottom: '1px solid var(--cap-border)',
+    }}>
+      <span style={{
+        width: 180,
+        flexShrink: 0,
+        fontSize: 'var(--cap-text-xs)',
+        color: 'var(--cap-fg-2)',
+        fontWeight: 500,
+        paddingTop: 2,
+      }}>
+        {label}
+      </span>
+      <span style={{
+        fontSize: 12,
+        fontFamily: 'var(--cap-font-mono)',
+        color: 'var(--cap-fg-1)',
+        wordBreak: 'break-all',
+        flex: 1,
+      }}>
+        {value}
+      </span>
     </div>
+  );
+}
+
+function ConfigCard({ title, rows }: { title: string; rows: { label: string; value: string }[] }) {
+  return (
+    <Card style={{ marginBottom: 'var(--cap-space-4)', overflow: 'hidden' }}>
+      <div style={{
+        padding: '12px 20px',
+        borderBottom: '1px solid var(--cap-border)',
+        background: 'var(--cap-surface-2)',
+      }}>
+        <h2 style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--cap-fg-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          {title}
+        </h2>
+      </div>
+      <div style={{ padding: '0 20px' }}>
+        {rows.map((r, i) => (
+          <div key={r.label} style={{ borderBottom: i < rows.length - 1 ? '1px solid var(--cap-border)' : 'none' }}>
+            <ConfigRow label={r.label} value={r.value} />
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -32,33 +78,44 @@ export default async function SettingsPage() {
   return (
     <div style={{ display: 'flex', minHeight: '100dvh' }}>
       <Sidebar activeId="settings" />
-      <main style={{ flex: 1, padding: 'var(--cap-space-8)', maxWidth: 700 }}>
-        <header style={{ marginBottom: 'var(--cap-space-8)' }}>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600 }}>Settings</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--cap-fg-2)' }}>
-            Current environment configuration — read-only.
-          </p>
-        </header>
 
-        <Card style={{ padding: 'var(--cap-space-6)', marginBottom: 'var(--cap-space-6)' }}>
-          <h2 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 600 }}>Auth0</h2>
-          <Row label="Configured" value={configured.auth0 ? 'Yes' : 'No — set AUTH0_DOMAIN + AUTH0_CLIENT_ID'} />
-          <Row label="Domain" value={configured.domain} />
-          <Row label="Client ID" value={configured.clientId} />
-          <Row label="App base URL" value={configured.appBaseUrl} />
-        </Card>
+      <main id="main-content" style={{ flex: 1, padding: 'var(--cap-space-8)', minWidth: 0 }}>
+        <div style={{ maxWidth: 640 }}>
+          <header style={{ marginBottom: 'var(--cap-space-8)' }}>
+            <h1 style={{ margin: '0 0 4px', fontSize: 'var(--cap-text-xl)', fontWeight: 600, letterSpacing: '-0.01em' }}>
+              Settings
+            </h1>
+            <p style={{ margin: 0, fontSize: 'var(--cap-text-base)', color: 'var(--cap-fg-2)' }}>
+              Environment configuration — read-only.
+            </p>
+          </header>
 
-        <Card style={{ padding: 'var(--cap-space-6)', marginBottom: 'var(--cap-space-6)' }}>
-          <h2 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 600 }}>Services</h2>
-          <Row label="Candidate base URL" value={configured.candidateBase} />
-          <Row label="Redis URL" value={configured.redisUrl} />
-        </Card>
+          <ConfigCard
+            title="Auth0"
+            rows={[
+              { label: 'Configured', value: configured.auth0 ? 'Yes' : 'No — set AUTH0_DOMAIN + AUTH0_CLIENT_ID' },
+              { label: 'Domain', value: configured.domain },
+              { label: 'Client ID', value: configured.clientId },
+              { label: 'App base URL', value: configured.appBaseUrl },
+            ]}
+          />
 
-        <Card style={{ padding: 'var(--cap-space-6)' }}>
-          <h2 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 600 }}>Scoring</h2>
-          <Row label="Memo model" value={configured.memoModel} />
-          <Row label="Anthropic API key" value={process.env.ANTHROPIC_API_KEY ? '***set***' : '— not set'} />
-        </Card>
+          <ConfigCard
+            title="Services"
+            rows={[
+              { label: 'Candidate base URL', value: configured.candidateBase },
+              { label: 'Redis URL', value: configured.redisUrl },
+            ]}
+          />
+
+          <ConfigCard
+            title="Scoring"
+            rows={[
+              { label: 'Memo model', value: configured.memoModel },
+              { label: 'Anthropic API key', value: process.env.ANTHROPIC_API_KEY ? '*** set ***' : '— not set' },
+            ]}
+          />
+        </div>
       </main>
     </div>
   );
