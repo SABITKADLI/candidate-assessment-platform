@@ -1,45 +1,72 @@
-/* CAP Design Tokens - dark mode, IBM Plex */
+/* CAP Design Tokens — IBM Plex, dark-first, light-mode supported */
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
+/* ─── Dark mode (default) ──────────────────────────────────────────────── */
 :root {
+  /* Backgrounds */
   --cap-bg:        #0d0f14;
   --cap-surface:   #161b27;
   --cap-surface-2: #1e2535;
   --cap-surface-3: #252d42;
 
-  --cap-border:    #2a3248;
-  --cap-border-2:  #3b4565;
+  /* Interactive surface states (new) */
+  --cap-surface-hover:  #1c2232;
+  --cap-surface-active: #212843;
 
+  /* Borders */
+  --cap-border:   #2a3248;
+  --cap-border-2: #3b4565;
+
+  /* Foreground */
   --cap-fg-1: #e8eaf0;
-  --cap-fg-2: #8b93a8;
+  --cap-fg-2: #8b93a8;   /* 6.64:1 on --cap-bg — passes AA */
   --cap-fg-3: #4e5670;
 
+  /* Accent — blue */
   --cap-accent:        #3b82f6;
   --cap-accent-dim:    #1d4ed8;
   --cap-accent-muted:  #1e3a6e;
+  --cap-accent-surface: rgba(59, 130, 246, 0.08);   /* tinted bg (new) */
+  --cap-accent-hover:   rgba(59, 130, 246, 0.14);   /* tinted hover (new) */
 
-  --cap-danger:        #ef4444;
-  --cap-danger-muted:  #4c1212;
-  --cap-warning:       #f59e0b;
-  --cap-warning-muted: #4c3008;
-  --cap-success:       #22c55e;
-  --cap-success-muted: #0f3d21;
-  --cap-info:          #6366f1;
-  --cap-info-muted:    #1e1f5c;
-  --cap-critical:      #dc2626;
-  --cap-critical-muted:#3d0a0a;
+  /* Semantic colours */
+  --cap-danger:          #ef4444;
+  --cap-danger-muted:    #4c1212;
+  --cap-warning:         #f59e0b;
+  --cap-warning-muted:   #4c3008;
+  --cap-success:         #22c55e;
+  --cap-success-muted:   #0f3d21;
+  --cap-info:            #6366f1;
+  --cap-info-muted:      #1e1f5c;
+  --cap-critical:        #dc2626;
+  --cap-critical-muted:  #3d0a0a;
 
+  /* Typography */
   --cap-font-sans: 'IBM Plex Sans', system-ui, sans-serif;
   --cap-font-mono: 'IBM Plex Mono', ui-monospace, 'Menlo', monospace;
 
+  /* Fluid type scale — clamp(min, preferred, max) */
+  --cap-text-xs:  clamp(10px, 0.65rem + 0.1vw, 11px);
+  --cap-text-sm:  clamp(11px, 0.75rem + 0.1vw, 12px);
+  --cap-text-base: clamp(13px, 0.85rem + 0.1vw, 14px);
+  --cap-text-md:  clamp(14px, 0.9rem + 0.15vw, 15px);
+  --cap-text-lg:  clamp(16px, 1rem + 0.25vw, 18px);
+  --cap-text-xl:  clamp(18px, 1.15rem + 0.35vw, 22px);
+  --cap-text-2xl: clamp(22px, 1.4rem + 0.5vw, 28px);
+
+  /* Border radius */
   --cap-radius-sm: 4px;
   --cap-radius-md: 6px;
   --cap-radius-lg: 8px;
   --cap-radius-xl: 12px;
 
-  --cap-shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
-  --cap-shadow-lg: 0 8px 32px rgba(0,0,0,0.6);
+  /* Layered shadows */
+  --cap-shadow-sm: 0 1px 2px rgba(0,0,0,0.3), 0 1px 6px rgba(0,0,0,0.2);
+  --cap-shadow-md: 0 2px 8px rgba(0,0,0,0.35), 0 4px 20px rgba(0,0,0,0.25);
+  --cap-shadow-lg: 0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
+  --cap-shadow-accent: 0 0 0 3px rgba(59, 130, 246, 0.25);
 
+  /* Spacing scale */
   --cap-space-1: 4px;
   --cap-space-2: 8px;
   --cap-space-3: 12px;
@@ -49,19 +76,341 @@
   --cap-space-8: 32px;
   --cap-space-12: 48px;
   --cap-space-16: 64px;
+
+  /* Motion */
+  --cap-transition: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --cap-transition-slow: 250ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* ─── Light mode ────────────────────────────────────────────────────────── */
+@media (prefers-color-scheme: light) {
+  :root {
+    --cap-bg:        #f5f6f8;
+    --cap-surface:   #ffffff;
+    --cap-surface-2: #f0f2f5;
+    --cap-surface-3: #e8eaee;
+    --cap-surface-hover:  #eef0f4;
+    --cap-surface-active: #e4e7ed;
+
+    --cap-border:   #d8dce6;
+    --cap-border-2: #bec5d4;
+
+    --cap-fg-1: #111827;
+    --cap-fg-2: #4b5563;
+    --cap-fg-3: #9ca3af;
+
+    --cap-accent:         #2563eb;
+    --cap-accent-dim:     #1d4ed8;
+    --cap-accent-muted:   #dbeafe;
+    --cap-accent-surface: rgba(37, 99, 235, 0.07);
+    --cap-accent-hover:   rgba(37, 99, 235, 0.12);
+
+    --cap-danger:         #dc2626;
+    --cap-danger-muted:   #fee2e2;
+    --cap-warning:        #d97706;
+    --cap-warning-muted:  #fef3c7;
+    --cap-success:        #16a34a;
+    --cap-success-muted:  #dcfce7;
+    --cap-info:           #4f46e5;
+    --cap-info-muted:     #ede9fe;
+    --cap-critical:       #b91c1c;
+    --cap-critical-muted: #fee2e2;
+
+    --cap-shadow-sm: 0 1px 2px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04);
+    --cap-shadow-md: 0 2px 8px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.05);
+    --cap-shadow-lg: 0 8px 24px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06);
+    --cap-shadow-accent: 0 0 0 3px rgba(37, 99, 235, 0.2);
+  }
+}
+
+[data-theme="light"] {
+  --cap-bg:        #f5f6f8;
+  --cap-surface:   #ffffff;
+  --cap-surface-2: #f0f2f5;
+  --cap-surface-3: #e8eaee;
+  --cap-surface-hover:  #eef0f4;
+  --cap-surface-active: #e4e7ed;
+
+  --cap-border:   #d8dce6;
+  --cap-border-2: #bec5d4;
+
+  --cap-fg-1: #111827;
+  --cap-fg-2: #4b5563;
+  --cap-fg-3: #9ca3af;
+
+  --cap-accent:         #2563eb;
+  --cap-accent-dim:     #1d4ed8;
+  --cap-accent-muted:   #dbeafe;
+  --cap-accent-surface: rgba(37, 99, 235, 0.07);
+  --cap-accent-hover:   rgba(37, 99, 235, 0.12);
+
+  --cap-danger:         #dc2626;
+  --cap-danger-muted:   #fee2e2;
+  --cap-warning:        #d97706;
+  --cap-warning-muted:  #fef3c7;
+  --cap-success:        #16a34a;
+  --cap-success-muted:  #dcfce7;
+  --cap-info:           #4f46e5;
+  --cap-info-muted:     #ede9fe;
+  --cap-critical:       #b91c1c;
+  --cap-critical-muted: #fee2e2;
+
+  --cap-shadow-sm: 0 1px 2px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04);
+  --cap-shadow-md: 0 2px 8px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.05);
+  --cap-shadow-lg: 0 8px 24px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06);
+  --cap-shadow-accent: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* ─── Base styles ───────────────────────────────────────────────────────── */
 html, body {
   background: var(--cap-bg);
   color: var(--cap-fg-1);
   font-family: var(--cap-font-sans);
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-*, *::before, *::after { box-sizing: border-box; }
+*, *::before, *::after {
+  box-sizing: border-box;
+}
 
+::selection {
+  background: var(--cap-accent-surface);
+  color: var(--cap-accent);
+}
+
+/* ─── Focus ────────────────────────────────────────────────────────────── */
 .cap-focus:focus-visible {
   outline: 2px solid var(--cap-accent);
   outline-offset: 2px;
+}
+
+/* ─── Button component ─────────────────────────────────────────────────── */
+.cap-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--cap-font-sans);
+  font-weight: 500;
+  border: 1px solid transparent;
+  cursor: pointer;
+  line-height: 1;
+  transition:
+    background var(--cap-transition),
+    color var(--cap-transition),
+    border-color var(--cap-transition),
+    box-shadow var(--cap-transition),
+    transform var(--cap-transition);
+  white-space: nowrap;
+  user-select: none;
+  text-decoration: none;
+}
+
+.cap-btn:active:not(:disabled) { transform: translateY(1px); }
+.cap-btn:disabled { cursor: not-allowed; opacity: 0.45; }
+
+/* primary */
+.cap-btn-primary { background: var(--cap-accent); color: #fff; border-color: var(--cap-accent); }
+.cap-btn-primary:hover:not(:disabled) { background: var(--cap-accent-dim); border-color: var(--cap-accent-dim); }
+.cap-btn-primary:focus-visible { box-shadow: var(--cap-shadow-accent); outline: none; }
+
+/* secondary */
+.cap-btn-secondary { background: var(--cap-surface-2); color: var(--cap-fg-1); border-color: var(--cap-border); }
+.cap-btn-secondary:hover:not(:disabled) { background: var(--cap-surface-hover); border-color: var(--cap-border-2); }
+.cap-btn-secondary:focus-visible { outline: 2px solid var(--cap-accent); outline-offset: 2px; }
+
+/* ghost */
+.cap-btn-ghost { background: transparent; color: var(--cap-fg-2); border-color: transparent; }
+.cap-btn-ghost:hover:not(:disabled) { background: var(--cap-surface-hover); color: var(--cap-fg-1); }
+.cap-btn-ghost:focus-visible { outline: 2px solid var(--cap-accent); outline-offset: 2px; }
+
+/* danger */
+.cap-btn-danger { background: var(--cap-danger-muted); color: var(--cap-danger); border-color: var(--cap-danger); }
+.cap-btn-danger:hover:not(:disabled) { background: var(--cap-danger); color: #fff; }
+.cap-btn-danger:focus-visible { outline: 2px solid var(--cap-danger); outline-offset: 2px; }
+
+/* sizes */
+.cap-btn-sm { font-size: var(--cap-text-xs); padding: 5px 10px; border-radius: var(--cap-radius-sm); }
+.cap-btn-md { font-size: var(--cap-text-sm); padding: 7px 14px; border-radius: var(--cap-radius-md); }
+.cap-btn-lg { font-size: var(--cap-text-md); padding: 10px 20px; border-radius: var(--cap-radius-md); }
+
+/* ─── Card component ───────────────────────────────────────────────────── */
+.cap-card {
+  background: var(--cap-surface);
+  border: 1px solid var(--cap-border);
+  border-radius: var(--cap-radius-lg);
+  box-shadow: var(--cap-shadow-sm);
+  transition: box-shadow var(--cap-transition), transform var(--cap-transition);
+}
+
+.cap-card--interactive {
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.cap-card--interactive:hover {
+  box-shadow: var(--cap-shadow-md);
+  transform: translateY(-1px);
+  border-color: var(--cap-border-2);
+}
+
+.cap-card--interactive:active {
+  transform: translateY(0);
+  box-shadow: var(--cap-shadow-sm);
+}
+
+.cap-card--interactive:focus-visible {
+  outline: 2px solid var(--cap-accent);
+  outline-offset: 2px;
+}
+
+/* ─── Input component ──────────────────────────────────────────────────── */
+.cap-input {
+  background: var(--cap-surface);
+  border: 1px solid var(--cap-border);
+  border-radius: var(--cap-radius-md);
+  padding: 8px 10px;
+  color: var(--cap-fg-1);
+  font-family: var(--cap-font-sans);
+  font-size: var(--cap-text-base);
+  line-height: 1.4;
+  width: 100%;
+  outline: none;
+  transition: border-color var(--cap-transition), box-shadow var(--cap-transition);
+}
+
+.cap-input:hover:not(:disabled):not(:focus) {
+  border-color: var(--cap-border-2);
+}
+
+.cap-input:focus {
+  border-color: var(--cap-accent);
+  box-shadow: var(--cap-shadow-accent);
+}
+
+.cap-input--error {
+  border-color: var(--cap-danger);
+}
+
+.cap-input--error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+
+.cap-input--mono { font-family: var(--cap-font-mono); }
+
+.cap-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Sidebar ──────────────────────────────────────────────────────────── */
+.cap-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: var(--cap-radius-md);
+  font-size: var(--cap-text-base);
+  font-weight: 400;
+  color: var(--cap-fg-2);
+  background: transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background var(--cap-transition), color var(--cap-transition);
+  position: relative;
+  border: none;
+  width: 100%;
+  text-align: left;
+}
+
+.cap-sidebar-item:hover {
+  background: var(--cap-surface-hover);
+  color: var(--cap-fg-1);
+}
+
+.cap-sidebar-item:focus-visible {
+  outline: 2px solid var(--cap-accent);
+  outline-offset: -2px;
+}
+
+.cap-sidebar-item--active {
+  background: var(--cap-accent-surface);
+  color: var(--cap-fg-1);
+  font-weight: 500;
+}
+
+.cap-sidebar-item--active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--cap-accent);
+}
+
+/* ─── Table rows ───────────────────────────────────────────────────────── */
+.cap-table-row {
+  border-bottom: 1px solid var(--cap-border);
+  transition: background var(--cap-transition);
+}
+
+.cap-table-row:hover { background: var(--cap-surface-hover); }
+.cap-table-row:last-child { border-bottom: none; }
+
+/* ─── Skeleton loader ──────────────────────────────────────────────────── */
+@keyframes cap-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.cap-skeleton {
+  display: inline-block;
+  border-radius: var(--cap-radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--cap-surface-2) 25%,
+    var(--cap-surface-3) 50%,
+    var(--cap-surface-2) 75%
+  );
+  background-size: 800px 100%;
+  animation: cap-shimmer 1.6s ease-in-out infinite;
+}
+
+/* ─── Utilities ────────────────────────────────────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ─── Reduced motion ───────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .cap-skeleton {
+    animation: none;
+    background: var(--cap-surface-2);
+  }
 }
