@@ -119,19 +119,8 @@ export function CodingPlayer() {
         onKeyDown={handleKeyDown}
         spellCheck={false}
         rows={18}
-        style={{
-          width: '100%', boxSizing: 'border-box',
-          padding: '14px 16px', fontSize: 13.5,
-          fontFamily: 'var(--cap-font-mono)',
-          lineHeight: 1.6,
-          background: 'hsl(220,13%,9%)',
-          color: 'hsl(210,25%,88%)',
-          border: '1px solid var(--cap-border)',
-          borderRadius: 'var(--cap-radius-md)',
-          resize: 'vertical',
-          outline: 'none',
-          tabSize: 4,
-        }}
+        className="cap-code-editor"
+        aria-label="Code editor"
       />
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

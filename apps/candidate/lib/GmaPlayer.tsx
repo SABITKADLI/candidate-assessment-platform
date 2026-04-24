@@ -120,26 +120,23 @@ export function GmaPlayer() {
           return (
             <button
               key={i}
+              type="button"
               onClick={() => setUi({ ...ui, choice: i })}
               disabled={submitting}
-              className="cap-focus"
-              style={{
-                textAlign: 'left',
-                padding: '12px 14px',
-                fontFamily: 'var(--cap-font-sans)',
-                fontSize: 14,
-                color: 'var(--cap-fg-1)',
-                background: active ? 'var(--cap-accent-muted)' : 'var(--cap-surface)',
-                border: `1px solid ${active ? 'var(--cap-accent)' : 'var(--cap-border)'}`,
-                borderRadius: 'var(--cap-radius-md)',
-                cursor: submitting ? 'not-allowed' : 'pointer',
-                transition: 'background 150ms ease, border-color 150ms ease',
-              }}
+              className={['cap-choice-btn', active && 'cap-choice-btn--selected'].filter(Boolean).join(' ')}
+              aria-pressed={active}
             >
               <span style={{
-                display: 'inline-block', width: 22, textAlign: 'center',
-                marginRight: 10, fontFamily: 'var(--cap-font-mono)',
-                color: active ? 'var(--cap-accent)' : 'var(--cap-fg-2)',
+                flexShrink: 0,
+                width: 22, height: 22,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: 'var(--cap-font-mono)',
+                fontSize: 11,
+                fontWeight: 600,
+                color: active ? 'var(--cap-accent)' : 'var(--cap-fg-3)',
+                background: active ? 'var(--cap-accent-surface)' : 'var(--cap-surface-2)',
+                borderRadius: 4,
+                border: active ? '1px solid rgba(59,130,246,0.3)' : '1px solid var(--cap-border)',
               }}>
                 {String.fromCharCode(65 + i)}
               </span>
