@@ -1,6 +1,7 @@
 'use client';
 
 import type { KeyboardEvent, ReactNode } from 'react';
+import { LayoutDashboard, ListChecks, ShieldAlert, Settings } from 'lucide-react';
 
 export interface SidebarItem {
   id: string;
@@ -17,10 +18,10 @@ export interface SidebarProps {
 }
 
 const DEFAULT_ITEMS: SidebarItem[] = [
-  { id: 'dashboard', label: 'Dashboard', href: '/dashboard' },
-  { id: 'sessions',  label: 'Sessions',  href: '/sessions' },
-  { id: 'flags',     label: 'Flags',     href: '/flags' },
-  { id: 'settings',  label: 'Settings',  href: '/settings' },
+  { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={15} strokeWidth={1.75} /> },
+  { id: 'sessions',  label: 'Sessions',  href: '/sessions',  icon: <ListChecks     size={15} strokeWidth={1.75} /> },
+  { id: 'flags',     label: 'Flags',     href: '/flags',     icon: <ShieldAlert    size={15} strokeWidth={1.75} /> },
+  { id: 'settings',  label: 'Settings',  href: '/settings',  icon: <Settings       size={15} strokeWidth={1.75} /> },
 ];
 
 /* CAP SVG monogram */

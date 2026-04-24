@@ -458,6 +458,48 @@ html, body {
 
 .cap-choice-btn:disabled { cursor: not-allowed; opacity: 0.6; }
 
+/* ─── Mobile responsive ────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  /* Sidebar collapses off-screen; toggled via data-open attribute */
+  .cap-sidebar-mobile-hidden {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform var(--cap-transition);
+    width: 240px !important;
+    box-shadow: var(--cap-shadow-lg);
+  }
+
+  .cap-sidebar-mobile-hidden[data-open="true"] {
+    transform: translateX(0);
+  }
+
+  /* All touch targets ≥ 44px */
+  .cap-btn-sm  { min-height: 36px; }
+  .cap-btn-md  { min-height: 40px; }
+  .cap-btn-lg  { min-height: 44px; }
+  .cap-sidebar-item { min-height: 44px; }
+
+  /* Candidate card full-width on small screens */
+  .cap-landing-card { padding: 28px 22px !important; }
+
+  /* Stats grid 2-col on mobile */
+  .cap-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Hide table columns that aren't critical */
+  .cap-table-hide-mobile { display: none; }
+}
+
+@media (max-width: 479px) {
+  /* Single column stats on very small phones */
+  .cap-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* ─── Reduced motion ───────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
