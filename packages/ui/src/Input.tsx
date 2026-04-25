@@ -1,3 +1,5 @@
+'use client';
+
 import { useId, type InputHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {

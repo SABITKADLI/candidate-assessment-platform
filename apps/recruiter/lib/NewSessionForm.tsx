@@ -105,7 +105,7 @@ export function NewSessionForm() {
               padding: '8px 14px', cursor: 'pointer',
               border: `1px solid ${stage === s ? 'var(--cap-accent)' : 'var(--cap-border)'}`,
               borderRadius: 'var(--cap-radius-md)',
-              background: stage === s ? 'rgba(99,102,241,0.08)' : 'var(--cap-surface)',
+              background: stage === s ? 'var(--cap-accent-surface)' : 'var(--cap-surface)',
               fontSize: 13, color: stage === s ? 'var(--cap-fg-1)' : 'var(--cap-fg-2)',
             }}>
               <input

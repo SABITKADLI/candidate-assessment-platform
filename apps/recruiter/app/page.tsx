@@ -31,6 +31,36 @@ const SETUP_STEPS = [
   },
 ];
 
+function CapWordmark() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 32 }}>
+      <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <rect width="28" height="28" rx="6" fill="var(--cap-accent)" />
+        <path d="M8 10.5C8 9.12 9.12 8 10.5 8H14v2h-3.5a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 .5.5H14v2h-3.5C9.12 20 8 18.88 8 17.5v-7z" fill="#fff" />
+        <path d="M15.5 8h1.6l3.4 12h-2.1l-.7-2.5H17l-.7 2.5H14.1L15.5 8zm.8 2.8-1 4.2h2l-1-4.2z" fill="#fff" />
+      </svg>
+      <span style={{
+        fontSize: 13,
+        fontWeight: 600,
+        color: 'var(--cap-fg-1)',
+        letterSpacing: '-0.01em',
+      }}>
+        CAP
+        <span style={{
+          marginLeft: 8,
+          fontSize: 11,
+          fontWeight: 400,
+          color: 'var(--cap-fg-3)',
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase',
+        }}>
+          Recruiter console
+        </span>
+      </span>
+    </div>
+  );
+}
+
 function EnvVar({ name }: { name: string }) {
   return (
     <code style={{
@@ -62,74 +92,78 @@ export default async function Home() {
           background: 'var(--cap-bg)',
         }}
       >
-        <div style={{ width: '100%', maxWidth: 540 }}>
-          {/* Header */}
-          <div style={{ marginBottom: 28, textAlign: 'center' }}>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 44,
-              height: 44,
-              background: 'var(--cap-accent)',
-              borderRadius: 10,
-              marginBottom: 16,
-            }}>
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
-                <path d="M5 8C5 6.34 6.34 5 8 5H11v2H8a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h3v2H8C6.34 17 5 15.66 5 14V8z" fill="#fff"/>
-                <path d="M13 5h2.2l4.8 12H17.3l-.9-2.5h-2.8l-.9 2.5H11L13 5zm.9 3.8-1.1 4.2h2.2l-1.1-4.2z" fill="#fff"/>
-              </svg>
-            </div>
-            <h1 style={{ margin: '0 0 6px', fontSize: 'var(--cap-text-xl)', fontWeight: 600 }}>
-              Setup required
-            </h1>
-            <p style={{ margin: 0, fontSize: 'var(--cap-text-base)', color: 'var(--cap-fg-2)', lineHeight: 1.6 }}>
-              Add these variables to{' '}
-              <EnvVar name="apps/recruiter/.env.local" />
-            </p>
-          </div>
+        <div style={{ width: '100%', maxWidth: 520 }}>
+          <CapWordmark />
+
+          <h1 style={{
+            margin: '0 0 6px',
+            fontSize: 'var(--cap-text-xl)',
+            fontWeight: 600,
+            letterSpacing: '-0.02em',
+            lineHeight: 1.25,
+            color: 'var(--cap-fg-1)',
+          }}>
+            Setup required
+          </h1>
+          <p style={{
+            margin: '0 0 24px',
+            fontSize: 'var(--cap-text-base)',
+            color: 'var(--cap-fg-2)',
+            lineHeight: 1.65,
+          }}>
+            Add these variables to <EnvVar name="apps/recruiter/.env.local" />, then restart.
+          </p>
 
           <Card style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '16px 20px 14px', borderBottom: '1px solid var(--cap-border)' }}>
-              <p style={{ margin: 0, fontSize: 'var(--cap-text-xs)', fontWeight: 500, color: 'var(--cap-fg-3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Required environment variables
-              </p>
+            <div style={{
+              padding: '12px 16px',
+              borderBottom: '1px solid var(--cap-border)',
+              background: 'var(--cap-surface-2)',
+            }}>
+              <span style={{
+                fontSize: 'var(--cap-text-xs)',
+                fontWeight: 500,
+                color: 'var(--cap-fg-3)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.07em',
+              }}>
+                Environment variables
+              </span>
             </div>
             <div>
               {SETUP_STEPS.map((step, i) => (
                 <div
                   key={step.key}
                   style={{
-                    padding: '14px 20px',
+                    padding: '12px 16px',
                     borderBottom: i < SETUP_STEPS.length - 1 ? '1px solid var(--cap-border)' : 'none',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: 14,
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 12,
+                    alignItems: 'start',
                   }}
                 >
-                  <div style={{
-                    width: 22, height: 22, borderRadius: '50%',
-                    background: 'var(--cap-surface-2)',
-                    border: '1px solid var(--cap-border)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 10, fontWeight: 600, color: 'var(--cap-fg-3)',
-                    flexShrink: 0, marginTop: 1,
-                  }}>
-                    {i + 1}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <EnvVar name={step.key} />
-                      <span style={{ fontSize: 'var(--cap-text-xs)', color: 'var(--cap-fg-2)' }}>{step.label}</span>
-                    </div>
+                  <div>
+                    <EnvVar name={step.key} />
                     <div style={{
-                      fontFamily: 'var(--cap-font-mono)', fontSize: 11,
-                      color: 'var(--cap-fg-3)', background: 'var(--cap-surface-2)',
-                      padding: '6px 10px', borderRadius: 'var(--cap-radius-sm)',
-                      border: '1px solid var(--cap-border)',
+                      marginTop: 4,
+                      fontSize: 'var(--cap-text-xs)',
+                      color: 'var(--cap-fg-3)',
                     }}>
-                      {step.example}
+                      {step.label}
                     </div>
+                  </div>
+                  <div style={{
+                    fontFamily: 'var(--cap-font-mono)',
+                    fontSize: 11,
+                    color: 'var(--cap-fg-2)',
+                    background: 'var(--cap-surface-2)',
+                    padding: '5px 8px',
+                    borderRadius: 'var(--cap-radius-sm)',
+                    border: '1px solid var(--cap-border)',
+                    wordBreak: 'break-all',
+                  }}>
+                    {step.example}
                   </div>
                 </div>
               ))}
@@ -137,9 +171,12 @@ export default async function Home() {
           </Card>
 
           <p style={{
-            marginTop: 16, fontSize: 12, color: 'var(--cap-fg-3)', textAlign: 'center', lineHeight: 1.6,
+            marginTop: 14,
+            fontSize: 12,
+            color: 'var(--cap-fg-3)',
+            lineHeight: 1.6,
           }}>
-            Restart <EnvVar name="pnpm dev" /> after saving.
+            Run <EnvVar name="pnpm dev" /> after saving to apply changes.
           </p>
         </div>
       </main>
@@ -163,43 +200,41 @@ export default async function Home() {
         background: 'var(--cap-bg)',
       }}
     >
-      <div style={{ width: '100%', maxWidth: 380 }}>
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 44,
-            height: 44,
-            background: 'var(--cap-accent)',
-            borderRadius: 10,
-            marginBottom: 16,
-          }}>
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
-              <path d="M5 8C5 6.34 6.34 5 8 5H11v2H8a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h3v2H8C6.34 17 5 15.66 5 14V8z" fill="#fff"/>
-              <path d="M13 5h2.2l4.8 12H17.3l-.9-2.5h-2.8l-.9 2.5H11L13 5zm.9 3.8-1.1 4.2h2.2l-1.1-4.2z" fill="#fff"/>
-            </svg>
-          </div>
-          <h1 style={{ margin: '0 0 6px', fontSize: 'var(--cap-text-xl)', fontWeight: 600 }}>
-            Recruiter console
-          </h1>
-          <p style={{ margin: 0, fontSize: 'var(--cap-text-base)', color: 'var(--cap-fg-2)' }}>
-            Sign in to manage assessments
-          </p>
-        </div>
+      <div style={{ width: '100%', maxWidth: 360 }}>
+        <CapWordmark />
 
-        <Card style={{ padding: 24 }}>
-          <a href="/auth/login" style={{ textDecoration: 'none', display: 'block' }}>
-            <Button variant="primary" size="lg" style={{ width: '100%' }}>
-              Continue with SSO
-            </Button>
-          </a>
-        </Card>
-
+        <h1 style={{
+          margin: '0 0 6px',
+          fontSize: 'var(--cap-text-xl)',
+          fontWeight: 600,
+          letterSpacing: '-0.02em',
+          lineHeight: 1.25,
+          color: 'var(--cap-fg-1)',
+        }}>
+          Sign in
+        </h1>
         <p style={{
-          marginTop: 16, fontSize: 11, color: 'var(--cap-fg-3)', textAlign: 'center',
+          margin: '0 0 24px',
+          fontSize: 'var(--cap-text-base)',
+          color: 'var(--cap-fg-2)',
+          lineHeight: 1.6,
         }}>
           Access is restricted to authorized recruiters.
+        </p>
+
+        <a href="/auth/login" style={{ textDecoration: 'none', display: 'block' }}>
+          <Button variant="primary" size="lg" style={{ width: '100%' }}>
+            Continue with SSO
+          </Button>
+        </a>
+
+        <p style={{
+          marginTop: 20,
+          fontSize: 11,
+          color: 'var(--cap-fg-3)',
+          lineHeight: 1.6,
+        }}>
+          Single sign-on via Auth0. Contact your administrator if you need access.
         </p>
       </div>
     </main>

@@ -1,35 +1,20 @@
 import type { ReactNode } from 'react';
 import '@cap/ui/tokens.css';
+import { SkipLink } from '@cap/ui';
 
 export const metadata = { title: 'CAP · Recruiter Console' };
 
+const themeScript = `(function(){try{var t=localStorage.getItem('cap-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t)}else if(window.matchMedia('(prefers-color-scheme: light)').matches){document.documentElement.setAttribute('data-theme','light')}}catch(e){}})()`;
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Blocks paint until theme is applied — eliminates flash of wrong theme */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body>
-        <a
-          href="#main-content"
-          style={{
-            position: 'absolute',
-            left: '-9999px',
-            top: 'auto',
-            width: 1,
-            height: 1,
-            overflow: 'hidden',
-          }}
-          onFocus={(e) => {
-            const el = e.currentTarget;
-            el.style.cssText =
-              'position:fixed;top:8px;left:8px;width:auto;height:auto;padding:8px 14px;background:var(--cap-accent);color:#fff;font-size:13px;font-weight:600;border-radius:var(--cap-radius-md);z-index:9999;outline:none;';
-          }}
-          onBlur={(e) => {
-            const el = e.currentTarget;
-            el.style.cssText =
-              'position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;';
-          }}
-        >
-          Skip to content
-        </a>
+        <SkipLink />
         {children}
       </body>
     </html>

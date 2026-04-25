@@ -1,168 +1,250 @@
 /* CAP Design Tokens — IBM Plex, dark-first, light-mode supported */
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
-/* ─── Dark mode (default) ──────────────────────────────────────────────── */
+/* ─── Dark mode (default) — warm charcoal + teal ───────────────────────── */
 :root {
-  /* Backgrounds */
-  --cap-bg:        #0d0f14;
-  --cap-surface:   #161b27;
-  --cap-surface-2: #1e2535;
-  --cap-surface-3: #252d42;
+  /* Backgrounds — warm charcoal, not cold navy */
+  --cap-bg:        #111110;
+  --cap-surface:   #1a1917;
+  --cap-surface-2: #232120;
+  --cap-surface-3: #2c2a27;
 
-  /* Interactive surface states (new) */
-  --cap-surface-hover:  #1c2232;
-  --cap-surface-active: #212843;
+  /* Interactive surface states */
+  --cap-surface-hover:  #1e1d1b;
+  --cap-surface-active: #252320;
 
-  /* Borders */
-  --cap-border:   #2a3248;
-  --cap-border-2: #3b4565;
+  /* Borders — warm-toned */
+  --cap-border:   #2e2c29;
+  --cap-border-2: #3d3a35;
 
-  /* Foreground */
-  --cap-fg-1: #e8eaf0;
-  --cap-fg-2: #8b93a8;   /* 6.64:1 on --cap-bg — passes AA */
-  --cap-fg-3: #4e5670;
+  /* Foreground — warm white to warm grey */
+  --cap-fg-1: #f0ece6;
+  --cap-fg-2: #8c8880;   /* ~5.8:1 on --cap-bg — passes AA */
+  --cap-fg-3: #55524e;   /* decorative / non-text only */
 
-  /* Accent — blue */
-  --cap-accent:        #3b82f6;
-  --cap-accent-dim:    #1d4ed8;
-  --cap-accent-muted:  #1e3a6e;
-  --cap-accent-surface: rgba(59, 130, 246, 0.08);   /* tinted bg (new) */
-  --cap-accent-hover:   rgba(59, 130, 246, 0.14);   /* tinted hover (new) */
+  /* Accent — teal (dark mode) */
+  --cap-accent:         #5DCAA5;
+  --cap-accent-dim:     #3BA582;
+  --cap-accent-muted:   #0e3328;
+  --cap-accent-surface: rgba(93, 202, 165, 0.09);
+  --cap-accent-hover:   rgba(93, 202, 165, 0.15);
 
   /* Semantic colours */
-  --cap-danger:          #ef4444;
-  --cap-danger-muted:    #4c1212;
-  --cap-warning:         #f59e0b;
-  --cap-warning-muted:   #4c3008;
-  --cap-success:         #22c55e;
-  --cap-success-muted:   #0f3d21;
-  --cap-info:            #6366f1;
-  --cap-info-muted:      #1e1f5c;
-  --cap-critical:        #dc2626;
-  --cap-critical-muted:  #3d0a0a;
+  --cap-danger:          #f06060;
+  --cap-danger-muted:    #4a1515;
+  --cap-warning:         #f5a523;
+  --cap-warning-muted:   #4a3010;
+  --cap-success:         #3dbb7a;
+  --cap-success-muted:   #0e3d23;
+  --cap-info:            #6c8fff;
+  --cap-info-muted:      #1a2060;
+  --cap-critical:        #e84040;
+  --cap-critical-muted:  #3d0e0e;
 
   /* Typography */
   --cap-font-sans: 'IBM Plex Sans', system-ui, sans-serif;
   --cap-font-mono: 'IBM Plex Mono', ui-monospace, 'Menlo', monospace;
 
   /* Fluid type scale — clamp(min, preferred, max) */
-  --cap-text-xs:  clamp(10px, 0.65rem + 0.1vw, 11px);
-  --cap-text-sm:  clamp(11px, 0.75rem + 0.1vw, 12px);
+  --cap-text-xs:   clamp(10px, 0.65rem + 0.1vw, 11px);
+  --cap-text-sm:   clamp(11px, 0.75rem + 0.1vw, 12px);
   --cap-text-base: clamp(13px, 0.85rem + 0.1vw, 14px);
-  --cap-text-md:  clamp(14px, 0.9rem + 0.15vw, 15px);
-  --cap-text-lg:  clamp(16px, 1rem + 0.25vw, 18px);
-  --cap-text-xl:  clamp(18px, 1.15rem + 0.35vw, 22px);
-  --cap-text-2xl: clamp(22px, 1.4rem + 0.5vw, 28px);
+  --cap-text-md:   clamp(14px, 0.9rem  + 0.15vw, 15px);
+  --cap-text-lg:   clamp(16px, 1rem    + 0.25vw, 18px);
+  --cap-text-xl:   clamp(18px, 1.15rem + 0.35vw, 22px);
+  --cap-text-2xl:  clamp(22px, 1.4rem  + 0.5vw, 28px);
+  --cap-text-3xl:  clamp(28px, 1.75rem + 1vw, 36px);
 
   /* Border radius */
   --cap-radius-sm: 4px;
   --cap-radius-md: 6px;
   --cap-radius-lg: 8px;
   --cap-radius-xl: 12px;
+  --cap-radius-2xl: 16px;
 
-  /* Layered shadows */
-  --cap-shadow-sm: 0 1px 2px rgba(0,0,0,0.3), 0 1px 6px rgba(0,0,0,0.2);
-  --cap-shadow-md: 0 2px 8px rgba(0,0,0,0.35), 0 4px 20px rgba(0,0,0,0.25);
-  --cap-shadow-lg: 0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
-  --cap-shadow-accent: 0 0 0 3px rgba(59, 130, 246, 0.25);
+  /* Layered shadows — warmer */
+  --cap-shadow-sm: 0 1px 2px rgba(0,0,0,0.40), 0 1px 4px rgba(0,0,0,0.25);
+  --cap-shadow-md: 0 2px 8px rgba(0,0,0,0.45), 0 4px 20px rgba(0,0,0,0.30);
+  --cap-shadow-lg: 0 8px 32px rgba(0,0,0,0.60), 0 2px 8px rgba(0,0,0,0.35);
+  --cap-shadow-accent: 0 0 0 3px rgba(93, 202, 165, 0.28);
 
   /* Spacing scale */
-  --cap-space-1: 4px;
-  --cap-space-2: 8px;
-  --cap-space-3: 12px;
-  --cap-space-4: 16px;
-  --cap-space-5: 20px;
-  --cap-space-6: 24px;
-  --cap-space-8: 32px;
+  --cap-space-1:  4px;
+  --cap-space-2:  8px;
+  --cap-space-3:  12px;
+  --cap-space-4:  16px;
+  --cap-space-5:  20px;
+  --cap-space-6:  24px;
+  --cap-space-8:  32px;
   --cap-space-12: 48px;
   --cap-space-16: 64px;
 
   /* Motion */
-  --cap-transition: 150ms cubic-bezier(0.16, 1, 0.3, 1);
-  --cap-transition-slow: 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  --cap-transition:        150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --cap-transition-slow:   250ms cubic-bezier(0.16, 1, 0.3, 1);
+  --cap-transition-spring: 350ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Tint surfaces */
+  --cap-accent-glow:     rgba(93,  202, 165, 0.30);
+  --cap-accent-tint:     rgba(93,  202, 165, 0.06);
+  --cap-success-border:  rgba(61,  187, 122, 0.22);
+  --cap-warning-border:  rgba(245, 165,  35, 0.22);
+  --cap-danger-border:   rgba(240,  96,  96, 0.22);
+  --cap-danger-glow:     rgba(240,  96,  96, 0.22);
+  --cap-info-border:     rgba(108, 143, 255, 0.22);
+  --cap-critical-tint:   rgba(232,  64,  64, 0.05);
+  --cap-progress-glow:   rgba(93,  202, 165, 0.35);
 }
 
 /* ─── Light mode ────────────────────────────────────────────────────────── */
 @media (prefers-color-scheme: light) {
   :root {
-    --cap-bg:        #f5f6f8;
+    --cap-bg:        #f5f3ef;
     --cap-surface:   #ffffff;
-    --cap-surface-2: #f0f2f5;
-    --cap-surface-3: #e8eaee;
-    --cap-surface-hover:  #eef0f4;
-    --cap-surface-active: #e4e7ed;
+    --cap-surface-2: #f0ece6;
+    --cap-surface-3: #e8e3dc;
+    --cap-surface-hover:  #e8e4de;
+    --cap-surface-active: #ddd8d0;
 
-    --cap-border:   #d8dce6;
-    --cap-border-2: #bec5d4;
+    --cap-border:   #dbd6ce;
+    --cap-border-2: #c0bab2;
 
-    --cap-fg-1: #111827;
-    --cap-fg-2: #4b5563;
-    --cap-fg-3: #9ca3af;
+    --cap-fg-1: #1a1816;
+    --cap-fg-2: #5a5751;
+    --cap-fg-3: #9a958f;
 
-    --cap-accent:         #2563eb;
-    --cap-accent-dim:     #1d4ed8;
-    --cap-accent-muted:   #dbeafe;
-    --cap-accent-surface: rgba(37, 99, 235, 0.07);
-    --cap-accent-hover:   rgba(37, 99, 235, 0.12);
+    /* Accent — forest green (light mode) */
+    --cap-accent:         #0F6E56;
+    --cap-accent-dim:     #0a5442;
+    --cap-accent-muted:   #d4efe6;
+    --cap-accent-surface: rgba(15, 110, 86, 0.08);
+    --cap-accent-hover:   rgba(15, 110, 86, 0.13);
 
-    --cap-danger:         #dc2626;
-    --cap-danger-muted:   #fee2e2;
-    --cap-warning:        #d97706;
-    --cap-warning-muted:  #fef3c7;
-    --cap-success:        #16a34a;
-    --cap-success-muted:  #dcfce7;
-    --cap-info:           #4f46e5;
-    --cap-info-muted:     #ede9fe;
-    --cap-critical:       #b91c1c;
-    --cap-critical-muted: #fee2e2;
+    --cap-danger:         #c93030;
+    --cap-danger-muted:   #fde8e8;
+    --cap-warning:        #b87010;
+    --cap-warning-muted:  #fef3cd;
+    --cap-success:        #1a7a4a;
+    --cap-success-muted:  #dff3e8;
+    --cap-info:           #3050c8;
+    --cap-info-muted:     #e8eeff;
+    --cap-critical:       #a82020;
+    --cap-critical-muted: #fde8e8;
 
-    --cap-shadow-sm: 0 1px 2px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04);
-    --cap-shadow-md: 0 2px 8px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.05);
-    --cap-shadow-lg: 0 8px 24px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06);
-    --cap-shadow-accent: 0 0 0 3px rgba(37, 99, 235, 0.2);
+    --cap-shadow-sm: 0 1px 2px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04);
+    --cap-shadow-md: 0 2px 8px rgba(0,0,0,0.09), 0 4px 16px rgba(0,0,0,0.05);
+    --cap-shadow-lg: 0 8px 24px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.07);
+    --cap-shadow-accent: 0 0 0 3px rgba(15, 110, 86, 0.25);
+
+    --cap-accent-glow:     rgba(15,  110,  86, 0.22);
+    --cap-accent-tint:     rgba(15,  110,  86, 0.05);
+    --cap-success-border:  rgba(26,  122,  74, 0.22);
+    --cap-warning-border:  rgba(184, 112,  16, 0.22);
+    --cap-danger-border:   rgba(201,  48,  48, 0.22);
+    --cap-danger-glow:     rgba(201,  48,  48, 0.22);
+    --cap-info-border:     rgba(48,   80, 200, 0.22);
+    --cap-critical-tint:   rgba(168,  32,  32, 0.05);
+    --cap-progress-glow:   rgba(15,  110,  86, 0.28);
   }
 }
 
 [data-theme="light"] {
-  --cap-bg:        #f5f6f8;
+  --cap-bg:        #f5f3ef;
   --cap-surface:   #ffffff;
-  --cap-surface-2: #f0f2f5;
-  --cap-surface-3: #e8eaee;
-  --cap-surface-hover:  #eef0f4;
-  --cap-surface-active: #e4e7ed;
+  --cap-surface-2: #f0ece6;
+  --cap-surface-3: #e8e3dc;
+  --cap-surface-hover:  #e8e4de;
+  --cap-surface-active: #ddd8d0;
 
-  --cap-border:   #d8dce6;
-  --cap-border-2: #bec5d4;
+  --cap-border:   #dbd6ce;
+  --cap-border-2: #c0bab2;
 
-  --cap-fg-1: #111827;
-  --cap-fg-2: #4b5563;
-  --cap-fg-3: #9ca3af;
+  --cap-fg-1: #1a1816;
+  --cap-fg-2: #5a5751;
+  --cap-fg-3: #9a958f;
 
-  --cap-accent:         #2563eb;
-  --cap-accent-dim:     #1d4ed8;
-  --cap-accent-muted:   #dbeafe;
-  --cap-accent-surface: rgba(37, 99, 235, 0.07);
-  --cap-accent-hover:   rgba(37, 99, 235, 0.12);
+  --cap-accent:         #0F6E56;
+  --cap-accent-dim:     #0a5442;
+  --cap-accent-muted:   #d4efe6;
+  --cap-accent-surface: rgba(15, 110, 86, 0.08);
+  --cap-accent-hover:   rgba(15, 110, 86, 0.13);
 
-  --cap-danger:         #dc2626;
-  --cap-danger-muted:   #fee2e2;
-  --cap-warning:        #d97706;
-  --cap-warning-muted:  #fef3c7;
-  --cap-success:        #16a34a;
-  --cap-success-muted:  #dcfce7;
-  --cap-info:           #4f46e5;
-  --cap-info-muted:     #ede9fe;
-  --cap-critical:       #b91c1c;
-  --cap-critical-muted: #fee2e2;
+  --cap-danger:         #c93030;
+  --cap-danger-muted:   #fde8e8;
+  --cap-warning:        #b87010;
+  --cap-warning-muted:  #fef3cd;
+  --cap-success:        #1a7a4a;
+  --cap-success-muted:  #dff3e8;
+  --cap-info:           #3050c8;
+  --cap-info-muted:     #e8eeff;
+  --cap-critical:       #a82020;
+  --cap-critical-muted: #fde8e8;
 
-  --cap-shadow-sm: 0 1px 2px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04);
-  --cap-shadow-md: 0 2px 8px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.05);
-  --cap-shadow-lg: 0 8px 24px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06);
-  --cap-shadow-accent: 0 0 0 3px rgba(37, 99, 235, 0.2);
+  --cap-shadow-sm: 0 1px 2px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04);
+  --cap-shadow-md: 0 2px 8px rgba(0,0,0,0.09), 0 4px 16px rgba(0,0,0,0.05);
+  --cap-shadow-lg: 0 8px 24px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.07);
+  --cap-shadow-accent: 0 0 0 3px rgba(15, 110, 86, 0.25);
+
+  --cap-accent-glow:     rgba(15,  110,  86, 0.22);
+  --cap-accent-tint:     rgba(15,  110,  86, 0.05);
+  --cap-success-border:  rgba(26,  122,  74, 0.22);
+  --cap-warning-border:  rgba(184, 112,  16, 0.22);
+  --cap-danger-border:   rgba(201,  48,  48, 0.22);
+  --cap-danger-glow:     rgba(201,  48,  48, 0.22);
+  --cap-info-border:     rgba(48,   80, 200, 0.22);
+  --cap-critical-tint:   rgba(168,  32,  32, 0.05);
+  --cap-progress-glow:   rgba(15,  110,  86, 0.28);
 }
 
+/* Explicit dark — overrides light-mode OS preference */
 [data-theme="dark"] {
   color-scheme: dark;
+
+  --cap-bg:        #111110;
+  --cap-surface:   #1a1917;
+  --cap-surface-2: #232120;
+  --cap-surface-3: #2c2a27;
+  --cap-surface-hover:  #1e1d1b;
+  --cap-surface-active: #252320;
+
+  --cap-border:   #2e2c29;
+  --cap-border-2: #3d3a35;
+
+  --cap-fg-1: #f0ece6;
+  --cap-fg-2: #8c8880;
+  --cap-fg-3: #55524e;
+
+  --cap-accent:         #5DCAA5;
+  --cap-accent-dim:     #3BA582;
+  --cap-accent-muted:   #0e3328;
+  --cap-accent-surface: rgba(93, 202, 165, 0.09);
+  --cap-accent-hover:   rgba(93, 202, 165, 0.15);
+
+  --cap-danger:          #f06060;
+  --cap-danger-muted:    #4a1515;
+  --cap-warning:         #f5a523;
+  --cap-warning-muted:   #4a3010;
+  --cap-success:         #3dbb7a;
+  --cap-success-muted:   #0e3d23;
+  --cap-info:            #6c8fff;
+  --cap-info-muted:      #1a2060;
+  --cap-critical:        #e84040;
+  --cap-critical-muted:  #3d0e0e;
+
+  --cap-shadow-sm: 0 1px 2px rgba(0,0,0,0.40), 0 1px 4px rgba(0,0,0,0.25);
+  --cap-shadow-md: 0 2px 8px rgba(0,0,0,0.45), 0 4px 20px rgba(0,0,0,0.30);
+  --cap-shadow-lg: 0 8px 32px rgba(0,0,0,0.60), 0 2px 8px rgba(0,0,0,0.35);
+  --cap-shadow-accent: 0 0 0 3px rgba(93, 202, 165, 0.28);
+
+  --cap-accent-glow:     rgba(93,  202, 165, 0.30);
+  --cap-accent-tint:     rgba(93,  202, 165, 0.06);
+  --cap-success-border:  rgba(61,  187, 122, 0.22);
+  --cap-warning-border:  rgba(245, 165,  35, 0.22);
+  --cap-danger-border:   rgba(240,  96,  96, 0.22);
+  --cap-danger-glow:     rgba(240,  96,  96, 0.22);
+  --cap-info-border:     rgba(108, 143, 255, 0.22);
+  --cap-critical-tint:   rgba(232,  64,  64, 0.05);
+  --cap-progress-glow:   rgba(93,  202, 165, 0.35);
 }
 
 /* ─── Base styles ───────────────────────────────────────────────────────── */
@@ -217,9 +299,17 @@ html, body {
 .cap-btn:active:not(:disabled) { transform: translateY(1px); }
 .cap-btn:disabled { cursor: not-allowed; opacity: 0.45; }
 
-/* primary */
-.cap-btn-primary { background: var(--cap-accent); color: #fff; border-color: var(--cap-accent); }
-.cap-btn-primary:hover:not(:disabled) { background: var(--cap-accent-dim); border-color: var(--cap-accent-dim); }
+/* primary — flat, no gradient */
+.cap-btn-primary {
+  background: var(--cap-accent);
+  color: #fff;
+  border-color: var(--cap-accent-dim);
+}
+.cap-btn-primary:hover:not(:disabled) {
+  background: var(--cap-accent-dim);
+  border-color: var(--cap-accent-dim);
+  box-shadow: 0 2px 12px var(--cap-accent-glow);
+}
 .cap-btn-primary:focus-visible { box-shadow: var(--cap-shadow-accent); outline: none; }
 
 /* secondary */
@@ -233,14 +323,15 @@ html, body {
 .cap-btn-ghost:focus-visible { outline: 2px solid var(--cap-accent); outline-offset: 2px; }
 
 /* danger */
-.cap-btn-danger { background: var(--cap-danger-muted); color: var(--cap-danger); border-color: var(--cap-danger); }
-.cap-btn-danger:hover:not(:disabled) { background: var(--cap-danger); color: #fff; }
+.cap-btn-danger { background: var(--cap-danger-muted); color: var(--cap-danger); border-color: var(--cap-danger-border); }
+.cap-btn-danger:hover:not(:disabled) { background: var(--cap-danger); color: #fff; border-color: var(--cap-danger); }
 .cap-btn-danger:focus-visible { outline: 2px solid var(--cap-danger); outline-offset: 2px; }
 
 /* sizes */
-.cap-btn-sm { font-size: var(--cap-text-xs); padding: 5px 10px; border-radius: var(--cap-radius-sm); }
-.cap-btn-md { font-size: var(--cap-text-sm); padding: 7px 14px; border-radius: var(--cap-radius-md); }
-.cap-btn-lg { font-size: var(--cap-text-md); padding: 10px 20px; border-radius: var(--cap-radius-md); }
+.cap-btn-sm { font-size: var(--cap-text-xs);   padding: 5px 10px;  border-radius: var(--cap-radius-sm); }
+.cap-btn-md { font-size: var(--cap-text-sm);   padding: 7px 14px;  border-radius: var(--cap-radius-md); }
+.cap-btn-lg { font-size: var(--cap-text-md);   padding: 10px 20px; border-radius: var(--cap-radius-md); }
+.cap-btn-xl { font-size: var(--cap-text-lg);   padding: 13px 28px; border-radius: var(--cap-radius-lg); font-weight: 600; letter-spacing: -0.01em; }
 
 /* ─── Card component ───────────────────────────────────────────────────── */
 .cap-card {
@@ -303,7 +394,7 @@ html, body {
 }
 
 .cap-input--error:focus {
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+  box-shadow: 0 0 0 3px var(--cap-danger-glow);
 }
 
 .cap-input--mono { font-family: var(--cap-font-mono); }
@@ -358,7 +449,67 @@ html, body {
   width: 2px;
   border-radius: 0 2px 2px 0;
   background: var(--cap-accent);
+  box-shadow: 0 0 6px var(--cap-accent-glow);
 }
+
+/* ─── Sidebar mobile hamburger ─────────────────────────────────────────── */
+.cap-hamburger {
+  display: none;
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 201;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  background: var(--cap-surface);
+  border: 1px solid var(--cap-border);
+  border-radius: var(--cap-radius-md);
+  color: var(--cap-fg-2);
+  cursor: pointer;
+  box-shadow: var(--cap-shadow-sm);
+  transition: background var(--cap-transition), color var(--cap-transition);
+}
+.cap-hamburger:hover { background: var(--cap-surface-hover); color: var(--cap-fg-1); }
+.cap-hamburger:focus-visible { outline: 2px solid var(--cap-accent); outline-offset: 2px; }
+
+/* ─── Sidebar mobile close button ─────────────────────────────────────── */
+.cap-sidebar-close-btn { display: none; }
+
+/* ─── Sidebar mobile backdrop ──────────────────────────────────────────── */
+.cap-sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 199;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: cap-fadein 150ms ease both;
+}
+
+@keyframes cap-fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─── Theme toggle button ──────────────────────────────────────────────── */
+.cap-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--cap-radius-md);
+  background: transparent;
+  border: 1px solid var(--cap-border);
+  color: var(--cap-fg-2);
+  cursor: pointer;
+  transition: background var(--cap-transition), color var(--cap-transition), border-color var(--cap-transition);
+}
+.cap-theme-toggle:hover { background: var(--cap-surface-hover); color: var(--cap-fg-1); border-color: var(--cap-border-2); }
+.cap-theme-toggle:focus-visible { outline: 2px solid var(--cap-accent); outline-offset: 2px; }
 
 /* ─── Table rows ───────────────────────────────────────────────────────── */
 .cap-table-row {
@@ -369,10 +520,88 @@ html, body {
 .cap-table-row:hover { background: var(--cap-surface-hover); }
 .cap-table-row:last-child { border-bottom: none; }
 
+/* ─── Motion keyframes ─────────────────────────────────────────────────── */
+@keyframes cap-fadeslide {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cap-shell-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cap-btn-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes cap-btn-dash {
+  0%   { stroke-dashoffset: 56; }
+  50%  { stroke-dashoffset: 14; stroke-dasharray: 14 42; }
+  100% { stroke-dashoffset: 56; }
+}
+
+@keyframes cap-fadeup {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cap-scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes cap-pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.7); }
+}
+
+@keyframes cap-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Animation utility classes ────────────────────────────────────────── */
+.cap-shell-content {
+  animation: cap-shell-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 0.05s;
+}
+
+.cap-landing-wordmark,
+.cap-landing-icon,
+.cap-landing-body {
+  animation: cap-fadeslide 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.cap-landing-wordmark { animation-delay: 0ms; }
+.cap-landing-icon     { animation-delay: 60ms; }
+.cap-landing-body     { animation-delay: 110ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cap-shell-content,
+  .cap-landing-wordmark,
+  .cap-landing-icon,
+  .cap-landing-body { animation: none !important; }
+}
+
+/* ─── Live-dot indicator ───────────────────────────────────────────────── */
+.cap-live-dot {
+  --cap-live-dot-color: var(--cap-accent);
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cap-live-dot-color);
+  animation: cap-pulse-dot 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.cap-live-dot--success { --cap-live-dot-color: var(--cap-success); }
+.cap-live-dot--danger  { --cap-live-dot-color: var(--cap-danger); }
+.cap-live-dot--warning { --cap-live-dot-color: var(--cap-warning); }
+
 /* ─── Skeleton loader ──────────────────────────────────────────────────── */
 @keyframes cap-shimmer {
   0%   { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
+  100% { background-position:  400px 0; }
 }
 
 .cap-skeleton {
@@ -406,8 +635,8 @@ html, body {
   font-family: var(--cap-font-mono);
   font-size: 13.5px;
   line-height: 1.65;
-  background: hsl(220, 15%, 8%);
-  color: hsl(210, 25%, 88%);
+  background: hsl(30, 8%, 7%);
+  color: hsl(35, 20%, 88%);
   border: 1px solid var(--cap-border);
   border-radius: var(--cap-radius-md);
   padding: 14px 16px;
@@ -462,9 +691,12 @@ html, body {
 @media (max-width: 767px) {
   /* Sidebar collapses off-screen; toggled via data-open attribute */
   .cap-sidebar-mobile-hidden {
-    position: fixed;
-    inset: 0;
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0;
+    left: 0;
     z-index: 200;
+    height: 100dvh !important;
     transform: translateX(-100%);
     transition: transform var(--cap-transition);
     width: 240px !important;
@@ -475,11 +707,18 @@ html, body {
     transform: translateX(0);
   }
 
+  .cap-hamburger { display: flex; }
+  .cap-sidebar-backdrop { display: block; }
+  .cap-sidebar-close-btn { display: flex; }
+
   /* All touch targets ≥ 44px */
   .cap-btn-sm  { min-height: 36px; }
   .cap-btn-md  { min-height: 40px; }
   .cap-btn-lg  { min-height: 44px; }
   .cap-sidebar-item { min-height: 44px; }
+
+  /* Offset main content below fixed hamburger on mobile */
+  .cap-main { padding-top: calc(var(--cap-space-8) + 52px) !important; }
 
   /* Candidate card full-width on small screens */
   .cap-landing-card { padding: 28px 22px !important; }
@@ -494,7 +733,6 @@ html, body {
 }
 
 @media (max-width: 479px) {
-  /* Single column stats on very small phones */
   .cap-stats-grid {
     grid-template-columns: 1fr !important;
   }

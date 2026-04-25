@@ -33,6 +33,7 @@ function EmptyState() {
         background: 'var(--cap-success-muted)',
         borderRadius: 12,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
+        border: '1px solid var(--cap-success-border)',
       }}>
         <ShieldCheck size={24} strokeWidth={1.5} color="var(--cap-success)" aria-hidden />
       </div>
@@ -52,6 +53,18 @@ const SEVERITY_SORT: Record<FlagSeverity, number> = {
   critical: 0, high: 1, medium: 2, low: 3, info: 4,
 };
 
+const TH_STYLE = {
+  padding: '10px 14px',
+  textAlign: 'left' as const,
+  fontSize: '11px',
+  fontWeight: 500,
+  color: 'var(--cap-fg-2)',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.07em',
+  borderBottom: '1px solid var(--cap-border)',
+  whiteSpace: 'nowrap' as const,
+};
+
 function FlagSection({
   title,
   flags,
@@ -69,9 +82,10 @@ function FlagSection({
         id={`section-${muted ? 'resolved' : 'open'}`}
         style={{
           margin: '0 0 12px',
-          fontSize: 13,
+          fontSize: 'var(--cap-text-base)',
           fontWeight: 600,
-          color: muted ? 'var(--cap-fg-3)' : 'var(--cap-fg-1)',
+          color: muted ? 'var(--cap-fg-2)' : 'var(--cap-fg-1)',
+          letterSpacing: '-0.01em',
           display: 'flex',
           alignItems: 'center',
           gap: 8,
@@ -79,7 +93,7 @@ function FlagSection({
       >
         {title}
         <span style={{
-          fontSize: 11, fontWeight: 600,
+          fontSize: 10, fontWeight: 600,
           fontFamily: 'var(--cap-font-mono)',
           color: 'var(--cap-fg-3)',
           background: 'var(--cap-surface-2)',
@@ -99,56 +113,69 @@ function FlagSection({
           <thead>
             <tr>
               {['Severity', 'Reason', 'Stage', 'Candidate', 'Raised'].map((h) => (
-                <th
-                  key={h}
-                  scope="col"
-                  style={{
-                    padding: '10px 14px',
-                    textAlign: 'left',
-                    fontSize: 'var(--cap-text-xs)',
-                    fontWeight: 600,
-                    color: 'var(--cap-fg-3)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    borderBottom: '1px solid var(--cap-border)',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {h}
-                </th>
+                <th key={h} scope="col" style={TH_STYLE}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {flags.map((f) => (
-              <tr
-                key={f.id}
-                className="cap-table-row"
-                style={{ opacity: muted ? 0.55 : 1 }}
-              >
-                <td style={{ padding: '10px 14px' }}>
-                  <FlagBadge severity={f.severity} />
-                </td>
-                <td style={{
-                  padding: '10px 14px',
-                  fontFamily: 'var(--cap-font-mono)',
-                  fontSize: 11,
-                  color: 'var(--cap-fg-1)',
-                  maxWidth: 280,
-                }}>
-                  {f.reason}
-                </td>
-                <td style={{ padding: '10px 14px', fontFamily: 'var(--cap-font-mono)', fontSize: 11, color: 'var(--cap-fg-2)', whiteSpace: 'nowrap' }}>
-                  {f.stage_key ?? '—'}
-                </td>
-                <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--cap-fg-2)' }}>
-                  {f.email ?? '—'}
-                </td>
-                <td style={{ padding: '10px 14px', fontFamily: 'var(--cap-font-mono)', fontSize: 11, color: 'var(--cap-fg-2)', whiteSpace: 'nowrap' }}>
-                  {f.created_at.toISOString().slice(0, 16).replace('T', ' ')}
-                </td>
-              </tr>
-            ))}
+            {flags.map((f) => {
+              const isCritical = f.severity === 'critical' && !muted;
+              return (
+                <tr
+                  key={f.id}
+                  className="cap-table-row"
+                  style={{
+                    opacity: muted ? 0.65 : 1,
+                    background: isCritical ? 'var(--cap-critical-tint)' : undefined,
+                  }}
+                >
+                  <td style={{ padding: '11px 14px' }}>
+                    <FlagBadge severity={f.severity} />
+                  </td>
+                  <td style={{
+                    padding: '11px 14px',
+                    fontFamily: 'var(--cap-font-mono)',
+                    fontSize: 11,
+                    color: isCritical ? 'var(--cap-fg-1)' : 'var(--cap-fg-1)',
+                    maxWidth: 280,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {f.reason}
+                  </td>
+                  <td style={{
+                    padding: '11px 14px',
+                    fontFamily: 'var(--cap-font-mono)',
+                    fontSize: 11,
+                    color: 'var(--cap-fg-2)',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {f.stage_key ?? '—'}
+                  </td>
+                  <td style={{
+                    padding: '11px 14px',
+                    fontSize: 13,
+                    color: 'var(--cap-fg-2)',
+                    maxWidth: 180,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {f.email ?? '—'}
+                  </td>
+                  <td style={{
+                    padding: '11px 14px',
+                    fontFamily: 'var(--cap-font-mono)',
+                    fontSize: 11,
+                    color: 'var(--cap-fg-2)',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {f.created_at.toISOString().slice(0, 16).replace('T', ' ')}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </Card>
@@ -182,25 +209,29 @@ export default async function FlagsPage() {
     <div style={{ display: 'flex', minHeight: '100dvh' }}>
       <Sidebar activeId="flags" />
 
-      <main id="main-content" style={{ flex: 1, padding: 'var(--cap-space-8)', minWidth: 0 }}>
-        {/* Page header */}
+      <main id="main-content" className="cap-main" style={{ flex: 1, padding: 'var(--cap-space-8)', minWidth: 0 }}>
         <header style={{ marginBottom: 'var(--cap-space-8)' }}>
-          <h1 style={{ margin: '0 0 4px', fontSize: 'var(--cap-text-xl)', fontWeight: 600, letterSpacing: '-0.01em' }}>
+          <h1 style={{
+            margin: '0 0 4px',
+            fontSize: 'var(--cap-text-xl)',
+            fontWeight: 600,
+            letterSpacing: '-0.02em',
+            lineHeight: 1.25,
+            color: 'var(--cap-fg-1)',
+          }}>
             Proctoring flags
           </h1>
           <p style={{ margin: 0, fontSize: 'var(--cap-text-base)', color: 'var(--cap-fg-2)' }}>
-            {open.length} open · {resolved.length} resolved
+            {open.length > 0
+              ? <><span style={{ color: 'var(--cap-warning)', fontWeight: 500 }}>{open.length} open</span> · {resolved.length} resolved</>
+              : `${resolved.length} resolved`}
           </p>
         </header>
 
         {flags.length === 0 ? (
-          <div style={{
-            background: 'var(--cap-surface)',
-            border: '1px solid var(--cap-border)',
-            borderRadius: 'var(--cap-radius-xl)',
-          }}>
+          <Card>
             <EmptyState />
-          </div>
+          </Card>
         ) : (
           <>
             <FlagSection title="Open" flags={open} />

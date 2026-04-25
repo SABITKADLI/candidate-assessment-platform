@@ -1,23 +1,23 @@
 import type { SessionStatus, FlagSeverity } from '@cap/shared';
 
-type StatusStyle = { color: string; bg: string; border: string; dot: string };
+type StatusStyle = { color: string; bg: string; border: string; dot: string; pulse?: boolean };
 
 const STATUS_MAP: Record<SessionStatus, StatusStyle> = {
-  pending:      { color: 'var(--cap-fg-2)',     bg: 'var(--cap-surface-2)',     border: 'var(--cap-border)',   dot: 'var(--cap-fg-3)' },
-  in_progress:  { color: 'var(--cap-accent)',   bg: 'var(--cap-accent-surface)',border: 'var(--cap-accent)',   dot: 'var(--cap-accent)' },
-  paused:       { color: 'var(--cap-warning)',  bg: 'var(--cap-warning-muted)', border: 'var(--cap-warning)',  dot: 'var(--cap-warning)' },
-  completed:    { color: 'var(--cap-success)',  bg: 'var(--cap-success-muted)', border: 'var(--cap-success)',  dot: 'var(--cap-success)' },
-  disqualified: { color: 'var(--cap-danger)',   bg: 'var(--cap-danger-muted)',  border: 'var(--cap-danger)',   dot: 'var(--cap-danger)' },
-  expired:      { color: 'var(--cap-fg-3)',     bg: 'var(--cap-surface)',       border: 'var(--cap-border)',   dot: 'var(--cap-fg-3)' },
-  abandoned:    { color: 'var(--cap-fg-3)',     bg: 'var(--cap-surface)',       border: 'var(--cap-border)',   dot: 'var(--cap-fg-3)' },
+  pending:      { color: 'var(--cap-fg-2)',     bg: 'var(--cap-surface-2)',      border: 'var(--cap-border)',   dot: 'var(--cap-fg-3)' },
+  in_progress:  { color: 'var(--cap-accent)',   bg: 'var(--cap-accent-surface)', border: 'var(--cap-accent)',   dot: 'var(--cap-accent)',   pulse: true },
+  paused:       { color: 'var(--cap-warning)',  bg: 'var(--cap-warning-muted)',  border: 'var(--cap-warning)',  dot: 'var(--cap-warning)' },
+  completed:    { color: 'var(--cap-success)',  bg: 'var(--cap-success-muted)',  border: 'var(--cap-success)',  dot: 'var(--cap-success)' },
+  disqualified: { color: 'var(--cap-danger)',   bg: 'var(--cap-danger-muted)',   border: 'var(--cap-danger)',   dot: 'var(--cap-danger)' },
+  expired:      { color: 'var(--cap-fg-3)',     bg: 'var(--cap-surface)',        border: 'var(--cap-border)',   dot: 'var(--cap-fg-3)' },
+  abandoned:    { color: 'var(--cap-fg-3)',     bg: 'var(--cap-surface)',        border: 'var(--cap-border)',   dot: 'var(--cap-fg-3)' },
 };
 
-const FLAG_MAP: Record<FlagSeverity, { color: string; bg: string; border: string }> = {
+const FLAG_MAP: Record<FlagSeverity, { color: string; bg: string; border: string; pulse?: boolean }> = {
   info:     { color: 'var(--cap-info)',     bg: 'var(--cap-info-muted)',     border: 'var(--cap-info)' },
   low:      { color: 'var(--cap-success)',  bg: 'var(--cap-success-muted)',  border: 'var(--cap-success)' },
   medium:   { color: 'var(--cap-warning)',  bg: 'var(--cap-warning-muted)',  border: 'var(--cap-warning)' },
   high:     { color: 'var(--cap-danger)',   bg: 'var(--cap-danger-muted)',   border: 'var(--cap-danger)' },
-  critical: { color: 'var(--cap-critical)', bg: 'var(--cap-critical-muted)', border: 'var(--cap-critical)' },
+  critical: { color: 'var(--cap-critical)', bg: 'var(--cap-critical-muted)', border: 'var(--cap-critical)', pulse: true },
 };
 
 export function StatusBadge({ status }: { status: SessionStatus }) {
@@ -37,7 +37,10 @@ export function StatusBadge({ status }: { status: SessionStatus }) {
     >
       <span
         aria-hidden="true"
-        style={{ width: 5, height: 5, borderRadius: '50%', background: s.dot, flexShrink: 0 }}
+        className={s.pulse ? 'cap-live-dot' : undefined}
+        style={!s.pulse ? {
+          width: 5, height: 5, borderRadius: '50%', background: s.dot, flexShrink: 0, display: 'inline-block',
+        } : undefined}
       />
       {label}
     </span>
@@ -50,6 +53,7 @@ export function FlagBadge({ severity }: { severity: FlagSeverity }) {
     <span
       aria-label={`Severity: ${severity}`}
       style={{
+        display: 'inline-flex', alignItems: 'center', gap: 5,
         padding: '3px 7px',
         borderRadius: 'var(--cap-radius-sm)',
         fontSize: 'var(--cap-text-xs)', fontWeight: 600,
@@ -59,6 +63,12 @@ export function FlagBadge({ severity }: { severity: FlagSeverity }) {
         border: `1px solid ${s.border}`,
       }}
     >
+      {s.pulse && (
+        <span
+          aria-hidden="true"
+          className="cap-live-dot cap-live-dot--danger"
+        />
+      )}
       {severity}
     </span>
   );

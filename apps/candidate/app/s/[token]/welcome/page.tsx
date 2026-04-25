@@ -49,7 +49,7 @@ export default async function Welcome() {
           padding: '16px',
           background: 'var(--cap-accent-surface)',
           borderRadius: 'var(--cap-radius-md)',
-          border: '1px solid rgba(59, 130, 246, 0.15)',
+          border: '1px solid var(--cap-info-border)',
         }}>
           <svg
             width="18" height="18" viewBox="0 0 24 24" fill="none"

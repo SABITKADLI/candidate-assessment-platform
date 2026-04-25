@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { auth0, auth0Configured } from '@/lib/auth0';
 import { Sidebar, Card } from '@cap/ui';
 import { NewSessionForm } from '@/lib/NewSessionForm';
-import { ArrowLeft } from 'lucide-react';
+import { BackLink } from '@/lib/BackLink';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,23 +16,10 @@ export default async function NewSessionPage() {
     <div style={{ display: 'flex', minHeight: '100dvh' }}>
       <Sidebar activeId="sessions" />
 
-      <main id="main-content" style={{ flex: 1, padding: 'var(--cap-space-8)', minWidth: 0 }}>
+      <main id="main-content" className="cap-main" style={{ flex: 1, padding: 'var(--cap-space-8)', minWidth: 0 }}>
         <div style={{ maxWidth: 560 }}>
           <header style={{ marginBottom: 'var(--cap-space-8)' }}>
-            <a
-              href="/dashboard"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                fontSize: 12, color: 'var(--cap-fg-3)', textDecoration: 'none',
-                marginBottom: 16,
-                transition: 'color var(--cap-transition)',
-              }}
-              onMouseOver={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--cap-fg-1)'; }}
-              onMouseOut={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--cap-fg-3)'; }}
-            >
-              <ArrowLeft size={13} strokeWidth={2} aria-hidden />
-              Dashboard
-            </a>
+            <BackLink href="/dashboard" label="Dashboard" />
             <h1 style={{ margin: '0 0 4px', fontSize: 'var(--cap-text-xl)', fontWeight: 600, letterSpacing: '-0.01em' }}>
               New assessment session
             </h1>

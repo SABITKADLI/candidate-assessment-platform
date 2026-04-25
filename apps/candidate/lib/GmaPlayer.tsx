@@ -136,7 +136,7 @@ export function GmaPlayer() {
                 color: active ? 'var(--cap-accent)' : 'var(--cap-fg-3)',
                 background: active ? 'var(--cap-accent-surface)' : 'var(--cap-surface-2)',
                 borderRadius: 4,
-                border: active ? '1px solid rgba(59,130,246,0.3)' : '1px solid var(--cap-border)',
+                border: active ? '1px solid var(--cap-accent-glow)' : '1px solid var(--cap-border)',
               }}>
                 {String.fromCharCode(65 + i)}
               </span>

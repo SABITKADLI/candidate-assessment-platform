@@ -11,3 +11,5 @@ export { StageShell } from './StageShell';
 export type { StageShellProps } from './StageShell';
 export { Skeleton } from './Skeleton';
 export type { SkeletonProps } from './Skeleton';
+export { SkipLink } from './SkipLink';
+export { ThemeToggle } from './ThemeToggle';

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { auth0, auth0Configured } from '@/lib/auth0';
 import { sql } from '@cap/db';
-import { Sidebar, StatusBadge, Button } from '@cap/ui';
+import { Sidebar, StatusBadge, Button, Card } from '@cap/ui';
 import type { SessionStatus, StageGroup } from '@cap/shared/enums';
 import { ExternalLink, Plus } from 'lucide-react';
 
@@ -27,7 +27,6 @@ function EmptyState() {
       gap: 16,
       textAlign: 'center',
     }}>
-      {/* SVG illustration */}
       <svg width="56" height="56" viewBox="0 0 56 56" fill="none" aria-hidden>
         <rect width="56" height="56" rx="12" fill="var(--cap-surface-2)" />
         <rect x="14" y="16" width="28" height="3" rx="1.5" fill="var(--cap-border-2)" />
@@ -46,7 +45,7 @@ function EmptyState() {
         </p>
       </div>
       <a href="/dashboard/new" style={{ textDecoration: 'none' }}>
-        <Button variant="primary">
+        <Button variant="primary" size="sm">
           <Plus size={14} strokeWidth={2} aria-hidden />
           New session
         </Button>
@@ -54,6 +53,19 @@ function EmptyState() {
     </div>
   );
 }
+
+const TH_STYLE = {
+  padding: '10px 14px',
+  textAlign: 'left' as const,
+  fontSize: '11px',
+  fontWeight: 500,
+  color: 'var(--cap-fg-2)',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.07em',
+  borderBottom: '1px solid var(--cap-border)',
+  whiteSpace: 'nowrap' as const,
+  background: 'var(--cap-surface)',
+};
 
 export default async function SessionsPage() {
   if (auth0Configured) {
@@ -77,8 +89,7 @@ export default async function SessionsPage() {
     <div style={{ display: 'flex', minHeight: '100dvh' }}>
       <Sidebar activeId="sessions" />
 
-      <main id="main-content" style={{ flex: 1, padding: 'var(--cap-space-8)', minWidth: 0 }}>
-        {/* Page header */}
+      <main id="main-content" className="cap-main" style={{ flex: 1, padding: 'var(--cap-space-8)', minWidth: 0 }}>
         <header style={{
           marginBottom: 'var(--cap-space-8)',
           display: 'flex',
@@ -87,104 +98,119 @@ export default async function SessionsPage() {
           gap: 16,
         }}>
           <div>
-            <h1 style={{ margin: '0 0 4px', fontSize: 'var(--cap-text-xl)', fontWeight: 600, letterSpacing: '-0.01em' }}>
+            <h1 style={{
+              margin: '0 0 4px',
+              fontSize: 'var(--cap-text-xl)',
+              fontWeight: 600,
+              letterSpacing: '-0.02em',
+              lineHeight: 1.25,
+              color: 'var(--cap-fg-1)',
+            }}>
               Sessions
             </h1>
             <p style={{ margin: 0, fontSize: 'var(--cap-text-base)', color: 'var(--cap-fg-2)' }}>
               {sessions.length === 0
                 ? 'No sessions created yet'
-                : `${sessions.length} session${sessions.length !== 1 ? 's' : ''}`}
+                : `${sessions.length} session${sessions.length !== 1 ? 's' : ''} total`}
             </p>
           </div>
           <a href="/dashboard/new" style={{ textDecoration: 'none', flexShrink: 0 }}>
-            <Button variant="primary">
-              <Plus size={14} strokeWidth={2} aria-hidden />
+            <Button variant="primary" size="lg">
+              <Plus size={15} strokeWidth={2} aria-hidden />
               New session
             </Button>
           </a>
         </header>
 
         {sessions.length === 0 ? (
-          <div style={{
-            background: 'var(--cap-surface)',
-            border: '1px solid var(--cap-border)',
-            borderRadius: 'var(--cap-radius-xl)',
-          }}>
+          <Card>
             <EmptyState />
-          </div>
+          </Card>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr>
-                  {['Candidate', 'Stage', 'Status', 'Created', 'Expires', 'Link'].map((h) => (
-                    <th
-                      key={h}
-                      scope="col"
-                      style={{
-                        padding: '10px 14px',
-                        textAlign: 'left',
-                        fontSize: 'var(--cap-text-xs)',
-                        fontWeight: 600,
-                        color: 'var(--cap-fg-3)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                        borderBottom: '1px solid var(--cap-border)',
-                        whiteSpace: 'nowrap',
-                        background: 'var(--cap-surface)',
-                      }}
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sessions.map((s) => {
-                  const expired = s.expires_at < now;
-                  return (
-                    <tr key={s.id} className="cap-table-row">
-                      <td style={{ padding: '10px 14px', color: 'var(--cap-fg-1)' }}>
-                        {s.email ?? <span style={{ color: 'var(--cap-fg-3)' }}>—</span>}
-                      </td>
-                      <td style={{ padding: '10px 14px', fontFamily: 'var(--cap-font-mono)', fontSize: 11, color: 'var(--cap-fg-2)' }}>
-                        Stage {s.stage}
-                      </td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <StatusBadge status={s.status} />
-                      </td>
-                      <td style={{ padding: '10px 14px', fontFamily: 'var(--cap-font-mono)', fontSize: 11, color: 'var(--cap-fg-2)', whiteSpace: 'nowrap' }}>
-                        {s.created_at.toISOString().slice(0, 16).replace('T', ' ')}
-                      </td>
-                      <td style={{ padding: '10px 14px', fontFamily: 'var(--cap-font-mono)', fontSize: 11, whiteSpace: 'nowrap', color: expired ? 'var(--cap-danger)' : 'var(--cap-fg-2)' }}>
-                        {s.expires_at.toISOString().slice(0, 16).replace('T', ' ')}
-                      </td>
-                      <td style={{ padding: '10px 14px' }}>
-                        {!expired ? (
-                          <a
-                            href={`${base}/s/${s.resume_token}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            aria-label={`Open session for ${s.email ?? 'candidate'}`}
-                            style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 4,
-                              fontSize: 12, color: 'var(--cap-accent)', textDecoration: 'none',
-                              fontWeight: 500,
-                            }}
-                          >
-                            Open
-                            <ExternalLink size={11} strokeWidth={2} aria-hidden />
-                          </a>
-                        ) : (
-                          <span style={{ fontSize: 11, color: 'var(--cap-fg-3)', fontFamily: 'var(--cap-font-mono)' }}>—</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <Card style={{ overflow: 'hidden' }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr>
+                    {['Candidate', 'Stage', 'Status', 'Created'].map((h) => (
+                      <th key={h} scope="col" style={TH_STYLE}>{h}</th>
+                    ))}
+                    <th scope="col" style={TH_STYLE} className="cap-table-hide-mobile">Expires</th>
+                    <th scope="col" style={TH_STYLE}>Link</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sessions.map((s) => {
+                    const expired = s.expires_at < now;
+                    return (
+                      <tr key={s.id} className="cap-table-row">
+                        <td style={{
+                          padding: '11px 14px',
+                          color: 'var(--cap-fg-1)',
+                          maxWidth: 200,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {s.email ?? <span style={{ color: 'var(--cap-fg-3)' }}>—</span>}
+                        </td>
+                        <td style={{
+                          padding: '11px 14px',
+                          fontFamily: 'var(--cap-font-mono)',
+                          fontSize: 11,
+                          color: 'var(--cap-fg-2)',
+                        }}>
+                          {s.stage}
+                        </td>
+                        <td style={{ padding: '11px 14px' }}>
+                          <StatusBadge status={s.status} />
+                        </td>
+                        <td style={{
+                          padding: '11px 14px',
+                          fontFamily: 'var(--cap-font-mono)',
+                          fontSize: 11,
+                          color: 'var(--cap-fg-2)',
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {s.created_at.toISOString().slice(0, 16).replace('T', ' ')}
+                        </td>
+                        <td className="cap-table-hide-mobile" style={{
+                          padding: '11px 14px',
+                          fontFamily: 'var(--cap-font-mono)',
+                          fontSize: 11,
+                          whiteSpace: 'nowrap',
+                          color: expired ? 'var(--cap-danger)' : 'var(--cap-fg-2)',
+                          fontWeight: expired ? 500 : 400,
+                        }}>
+                          {s.expires_at.toISOString().slice(0, 16).replace('T', ' ')}
+                        </td>
+                        <td style={{ padding: '11px 14px' }}>
+                          {!expired ? (
+                            <a
+                              href={`${base}/s/${s.resume_token}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              aria-label={`Open session for ${s.email ?? 'candidate'}`}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                fontSize: 12, color: 'var(--cap-accent)', textDecoration: 'none',
+                                fontWeight: 500,
+                              }}
+                            >
+                              Open
+                              <ExternalLink size={11} strokeWidth={2} aria-hidden />
+                            </a>
+                          ) : (
+                            <span style={{ fontSize: 11, color: 'var(--cap-fg-3)', fontFamily: 'var(--cap-font-mono)' }}>—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         )}
       </main>
     </div>

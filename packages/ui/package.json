@@ -19,10 +19,11 @@
   "devDependencies": {
     "@cap/config-ts": "workspace:*",
     "@types/react": "^19.0.0",
-    "typescript": "^5.6.3",
-    "react": "^19.0.0"
+    "react": "^19.0.0",
+    "typescript": "^5.6.3"
   },
   "dependencies": {
-    "@cap/shared": "workspace:*"
+    "@cap/shared": "workspace:*",
+    "lucide-react": "^1.11.0"
   }
 }

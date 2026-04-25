@@ -1,13 +1,13 @@
 import { auth0, auth0Configured } from '@/lib/auth0';
 import { sql } from '@cap/db';
-import { Sidebar, StatCard, Button, Card } from '@cap/ui';
+import { Sidebar, StatCard, Button, Card, StatusBadge } from '@cap/ui';
 import type { SessionStatus } from '@cap/shared/enums';
 import {
   Users,
   AlertTriangle,
   CheckCircle2,
-  TrendingUp,
-  ExternalLink,
+  Activity,
+  ArrowRight,
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -20,14 +20,17 @@ type RecentSession = {
   created_at: Date;
 };
 
-const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  pending:      { label: 'Pending',      color: 'var(--cap-fg-2)' },
-  in_progress:  { label: 'In progress',  color: 'var(--cap-accent)' },
-  paused:       { label: 'Paused',       color: 'var(--cap-warning)' },
-  completed:    { label: 'Completed',    color: 'var(--cap-success)' },
-  disqualified: { label: 'Disqualified', color: 'var(--cap-danger)' },
-  expired:      { label: 'Expired',      color: 'var(--cap-fg-3)' },
-  abandoned:    { label: 'Abandoned',    color: 'var(--cap-fg-3)' },
+const TH_STYLE = {
+  padding: '10px 16px',
+  textAlign: 'left' as const,
+  fontSize: '11px',
+  fontWeight: 500,
+  color: 'var(--cap-fg-2)',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.07em',
+  borderBottom: '1px solid var(--cap-border)',
+  whiteSpace: 'nowrap' as const,
+  background: 'var(--cap-surface)',
 };
 
 export default async function Dashboard() {
@@ -90,8 +93,8 @@ export default async function Dashboard() {
         }
       />
 
-      <main id="main-content" style={{ flex: 1, padding: 'var(--cap-space-8)', minWidth: 0 }}>
-        {/* Page header */}
+      <main id="main-content" className="cap-main" style={{ flex: 1, padding: 'var(--cap-space-8)', minWidth: 0 }}>
+        {/* Page header — utilitarian, data-first */}
         <header style={{
           marginBottom: 'var(--cap-space-8)',
           display: 'flex',
@@ -100,51 +103,64 @@ export default async function Dashboard() {
           gap: 16,
         }}>
           <div>
-            <h1 style={{ margin: '0 0 4px', fontSize: 'var(--cap-text-xl)', fontWeight: 600, letterSpacing: '-0.01em' }}>
-              Good to see you, {firstName}
+            <h1 style={{
+              margin: '0 0 3px',
+              fontSize: 'var(--cap-text-xl)',
+              fontWeight: 600,
+              letterSpacing: '-0.02em',
+              lineHeight: 1.25,
+              color: 'var(--cap-fg-1)',
+            }}>
+              Dashboard
             </h1>
-            <p style={{ margin: 0, fontSize: 'var(--cap-text-base)', color: 'var(--cap-fg-2)' }}>
-              Here's what's happening with your assessments today.
+            <p style={{
+              margin: 0,
+              fontSize: 'var(--cap-text-base)',
+              color: 'var(--cap-fg-3)',
+              fontFamily: 'var(--cap-font-mono)',
+            }}>
+              {firstName}
             </p>
           </div>
           <a href="/dashboard/new" style={{ textDecoration: 'none', flexShrink: 0 }}>
-            <Button variant="primary">New session</Button>
+            <Button variant="primary" size="lg">New session</Button>
           </a>
         </header>
 
-        {/* Stat cards */}
+        {/* Stat grid — horizontal data rows, not hero metric cards */}
         <section
           aria-label="Key metrics"
+          className="cap-stats-grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: 'var(--cap-space-4)',
-            maxWidth: 900,
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: 'var(--cap-space-3)',
+            maxWidth: 860,
             marginBottom: 'var(--cap-space-8)',
           }}
         >
           <StatCard
             label="Total sessions"
             value={counts!.sessions}
-            icon={<Users size={16} strokeWidth={1.5} />}
+            icon={<Users size={14} strokeWidth={1.5} />}
           />
           <StatCard
             label="In progress"
             value={counts!.in_progress}
-            icon={<TrendingUp size={16} strokeWidth={1.5} />}
+            icon={<Activity size={14} strokeWidth={1.5} />}
           />
           <StatCard
             label="Completed · 24h"
             value={counts!.completed_24h}
             tone="success"
-            icon={<CheckCircle2 size={16} strokeWidth={1.5} />}
+            icon={<CheckCircle2 size={14} strokeWidth={1.5} />}
           />
           <StatCard
             label="Open flags"
             value={counts!.open_flags}
             tone={flagCount > 0 ? 'warning' : 'default'}
             sub={flagCount > 0 ? 'Needs review' : undefined}
-            icon={<AlertTriangle size={16} strokeWidth={1.5} />}
+            icon={<AlertTriangle size={14} strokeWidth={1.5} />}
           />
         </section>
 
@@ -154,70 +170,89 @@ export default async function Dashboard() {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             marginBottom: 12,
           }}>
-            <h2 id="recent-heading" style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--cap-fg-1)' }}>
+            <h2 id="recent-heading" style={{
+              margin: 0,
+              fontSize: 'var(--cap-text-sm)',
+              fontWeight: 500,
+              color: 'var(--cap-fg-2)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.07em',
+            }}>
               Recent sessions
             </h2>
-            <a href="/sessions" style={{ fontSize: 12, color: 'var(--cap-accent)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
-              View all <ExternalLink size={11} strokeWidth={2} />
+            <a
+              href="/sessions"
+              style={{
+                fontSize: 12,
+                color: 'var(--cap-accent)',
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                fontWeight: 500,
+              }}
+            >
+              View all <ArrowRight size={11} strokeWidth={2} />
             </a>
           </div>
 
           <Card>
             {recent.length === 0 ? (
-              <div style={{ padding: '32px 24px', textAlign: 'center' }}>
-                <p style={{ margin: 0, fontSize: 13, color: 'var(--cap-fg-3)' }}>No sessions yet.</p>
+              <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+                <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 500, color: 'var(--cap-fg-1)' }}>
+                  No sessions yet
+                </p>
+                <p style={{ margin: '0 0 18px', fontSize: 13, color: 'var(--cap-fg-3)', lineHeight: 1.65 }}>
+                  Create a session to generate an invite link for a candidate.
+                </p>
+                <a href="/dashboard/new" style={{ textDecoration: 'none' }}>
+                  <Button variant="primary" size="sm">Create first session</Button>
+                </a>
               </div>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr>
                     {['Candidate', 'Stage', 'Status', 'Created'].map((h) => (
-                      <th
-                        key={h}
-                        scope="col"
-                        style={{
-                          padding: '10px 16px',
-                          textAlign: 'left',
-                          fontSize: 'var(--cap-text-xs)',
-                          fontWeight: 600,
-                          color: 'var(--cap-fg-3)',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
-                          borderBottom: '1px solid var(--cap-border)',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {h}
-                      </th>
+                      <th key={h} scope="col" style={TH_STYLE}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {recent.map((s) => {
-                    const st = STATUS_LABEL[s.status] ?? { label: s.status, color: 'var(--cap-fg-2)' };
-                    return (
-                      <tr key={s.id} className="cap-table-row">
-                        <td style={{ padding: '10px 16px', color: 'var(--cap-fg-1)' }}>
-                          {s.email ?? <span style={{ color: 'var(--cap-fg-3)' }}>—</span>}
-                        </td>
-                        <td style={{ padding: '10px 16px', fontFamily: 'var(--cap-font-mono)', fontSize: 11, color: 'var(--cap-fg-2)' }}>
-                          Stage {s.stage}
-                        </td>
-                        <td style={{ padding: '10px 16px' }}>
-                          <span style={{
-                            fontSize: 11, fontWeight: 500,
-                            color: st.color,
-                            fontFamily: 'var(--cap-font-mono)',
-                          }}>
-                            {st.label}
-                          </span>
-                        </td>
-                        <td style={{ padding: '10px 16px', fontFamily: 'var(--cap-font-mono)', fontSize: 11, color: 'var(--cap-fg-2)', whiteSpace: 'nowrap' }}>
-                          {s.created_at.toISOString().slice(0, 10)}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {recent.map((s) => (
+                    <tr key={s.id} className="cap-table-row">
+                      <td style={{
+                        padding: '11px 16px',
+                        color: 'var(--cap-fg-1)',
+                        maxWidth: 220,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {s.email ?? <span style={{ color: 'var(--cap-fg-3)' }}>—</span>}
+                      </td>
+                      <td style={{
+                        padding: '11px 16px',
+                        fontFamily: 'var(--cap-font-mono)',
+                        fontSize: 11,
+                        color: 'var(--cap-fg-2)',
+                      }}>
+                        {s.stage}
+                      </td>
+                      <td style={{ padding: '11px 16px' }}>
+                        <StatusBadge status={s.status} />
+                      </td>
+                      <td style={{
+                        padding: '11px 16px',
+                        fontFamily: 'var(--cap-font-mono)',
+                        fontSize: 11,
+                        color: 'var(--cap-fg-2)',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {s.created_at.toISOString().slice(0, 10)}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             )}
