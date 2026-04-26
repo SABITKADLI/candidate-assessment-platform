@@ -4,6 +4,7 @@ import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { sql, auditLog } from '@cap/db';
 import { rateLimit } from '@/lib/rate-limit';
+import { s3PutObject, resolveStorageKey } from '@/lib/s3-upload';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -40,12 +41,16 @@ export async function POST(req: Request) {
   const ext = file.type.includes('mp4') ? 'mp4' : 'webm';
   const sid: string = sessionId;
   const filename = `${randomUUID()}.${ext}`;
-  const s3Key = `async_video/${sid}/${filename}`;
 
   const uploadDir = process.env.UPLOAD_DIR ?? join(process.cwd(), '..', '..', '.uploads');
   const dir = join(uploadDir, 'async_video', sid);
   await mkdir(dir, { recursive: true });
-  await writeFile(join(dir, filename), buf);
+  const localPath = join(dir, filename);
+  await writeFile(localPath, buf);
+
+  const s3KeyPath = `async_video/${sid}/${filename}`;
+  await s3PutObject(s3KeyPath, buf, file.type);
+  const s3Key = resolveStorageKey(s3KeyPath, localPath);
 
   const artifacts = await sql<Array<{ id: string }>>`
     INSERT INTO app.artifacts (session_id, stage_key, kind, s3_key, sha256, size_bytes, mime_type)

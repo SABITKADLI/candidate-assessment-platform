@@ -117,16 +117,35 @@ export class AntibotClient {
   }
 
   private wireDevtools(): void {
-    // Heuristic: devtools open expands window.outer vs inner dimensions.
-    // Sample every 2s; emit on transition only to keep noise low.
+    // Heuristic: devtools docked to bottom/side expands outer vs inner dimensions.
+    // Threshold 250px reduces false positives from browser sidebars (e.g. Comet,
+    // Arc, Brave sidebar, Picture-in-Picture). We also require the gap to be
+    // present on two consecutive 2s ticks (4s debounce) before flagging, so
+    // a resize animation or panel slide-in doesn't trigger a permanent flag.
     let open = false;
+    let candidate = false;   // "saw it once, waiting for confirmation"
+    const THRESHOLD = 250;
     const check = () => {
       const diff =
-        (window.outerWidth  - window.innerWidth)  > 160 ||
-        (window.outerHeight - window.innerHeight) > 160;
-      if (diff !== open) {
-        open = diff;
-        this.push({ t: Math.round(safeNow()), k: 'dt', p: { open } });
+        (window.outerHeight - window.innerHeight) > THRESHOLD ||
+        (window.outerWidth  - window.innerWidth)  > THRESHOLD;
+
+      if (diff) {
+        if (!open) {
+          if (candidate) {
+            // Confirmed on second consecutive tick — flag it.
+            open = true;
+            this.push({ t: Math.round(safeNow()), k: 'dt', p: { open: true } });
+          } else {
+            candidate = true;   // first sighting — wait one more tick
+          }
+        }
+      } else {
+        candidate = false;
+        if (open) {
+          open = false;
+          this.push({ t: Math.round(safeNow()), k: 'dt', p: { open: false } });
+        }
       }
     };
     const id = window.setInterval(check, 2000);

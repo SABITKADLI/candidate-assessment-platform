@@ -100,7 +100,10 @@ export async function POST(req: Request) {
     if (done) {
       await tx`
         UPDATE app.sessions
-           SET status = 'completed', completed_at = now(), updated_at = now()
+           SET status       = 'completed',
+               completed_at = now(),
+               started_at   = COALESCE(started_at, now()),
+               updated_at   = now()
          WHERE id = ${sessionId}::uuid
            AND status <> 'completed'
       `;

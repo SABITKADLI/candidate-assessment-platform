@@ -14,7 +14,7 @@ FROM node:20-slim AS builder
 WORKDIR /build
 COPY runner-src/package.json runner-src/tsconfig.json ./
 COPY runner-src/src ./src
-COPY runner-src/protocol.ts ./src/protocol.ts
+COPY runner-src/protocol.ts ./protocol.ts
 RUN npm install --omit=optional --no-audit --no-fund \
  && npx tsc -p tsconfig.json
 
@@ -39,7 +39,7 @@ RUN pip install --no-cache-dir --no-compile \
 RUN groupadd -g 10000 runner && useradd -m -u 10000 -g 10000 -s /usr/sbin/nologin runner
 
 COPY --from=builder /build/dist /runner
-RUN chmod -R a-w /runner && chmod a+x /runner/runner.js
+RUN chmod -R a-w /runner && chmod a+x /runner/src/runner.js
 
 USER 10000:10000
 WORKDIR /work
@@ -47,4 +47,4 @@ WORKDIR /work
 # ENTRYPOINT left empty on purpose; the host always supplies the argv so the
 # same image can be exec'd with different runner paths during evolution.
 # Default CMD (used only if host forgets to pass argv) prints a helpful error.
-CMD ["node", "-e", "console.error('supply: node /runner/runner.js /in/job.json /out/result.json'); process.exit(2)"]
+CMD ["node", "-e", "console.error('supply: node /runner/src/runner.js /in/job.json /out/result.json'); process.exit(2)"]

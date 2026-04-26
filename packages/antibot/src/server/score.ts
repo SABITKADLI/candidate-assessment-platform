@@ -32,7 +32,7 @@ const W = {
   paste_large:    { delta: -3, sev: 'low' as FlagSeverity,    bytes: 400 },
   tab_blur_long:  { delta: -2, sev: 'low' as FlagSeverity,    ms: 30_000 },
   offline:        { delta: -1, sev: 'info' as FlagSeverity },
-  devtools_open:  { delta: -3, sev: 'medium' as FlagSeverity },
+  devtools_open:  { delta: -1, sev: 'low' as FlagSeverity },
   webdriver:      { delta: -8, sev: 'high' as FlagSeverity },
   cdp:            { delta: -8, sev: 'high' as FlagSeverity },
   headless_ua:    { delta: -10, sev: 'critical' as FlagSeverity },

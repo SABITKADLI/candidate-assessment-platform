@@ -50,6 +50,60 @@ services:
       timeout: 5s
       retries: 10
 
+  # ── Scoring worker (BullMQ, Anthropic, S3) ────────────────────────────────
+  # Start with: docker compose --profile workers up -d
+  scoring-worker:
+    profiles: [workers]
+    build:
+      context: .
+      dockerfile: apps/scoring-worker/Dockerfile
+    container_name: cap-scoring-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://cap:cap@postgres:5432/cap_dev
+      REDIS_URL: redis://redis:6379
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      MEMO_MODEL: ${MEMO_MODEL:-claude-sonnet-4-6}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      SCORING_QUEUE: scoring-runs
+      SCORING_CONCURRENCY: "4"
+      ATS_GREENHOUSE_URL: ${ATS_GREENHOUSE_URL:-}
+      ATS_GREENHOUSE_SECRET: ${ATS_GREENHOUSE_SECRET:-}
+      NODE_ENV: production
+
+  # ── Sandbox worker (BullMQ, Docker-in-Docker) ─────────────────────────────
+  # Requires sandbox image pre-built: pnpm --filter sandbox-worker build:image
+  sandbox-worker:
+    profiles: [workers]
+    build:
+      context: .
+      dockerfile: apps/sandbox-worker/Dockerfile
+    container_name: cap-sandbox-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      DATABASE_URL: postgres://cap:cap@postgres:5432/cap_dev
+      REDIS_URL: redis://redis:6379
+      SANDBOX_IMAGE: cap/sandbox:latest
+      SANDBOX_RUNTIME: ${SANDBOX_RUNTIME:-runc}
+      SANDBOX_QUEUE: sandbox-runs
+      SANDBOX_CONCURRENCY: "2"
+      NODE_ENV: production
+
 volumes:
   postgres_data:
   redis_data:

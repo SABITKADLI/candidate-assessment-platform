@@ -66,7 +66,10 @@ export async function completeStage(a: CompleteArgs): Promise<CompleteResult> {
     if (done) {
       await tx`
         UPDATE app.sessions
-           SET status = 'completed', completed_at = now(), updated_at = now()
+           SET status       = 'completed',
+               completed_at = now(),
+               started_at   = COALESCE(started_at, now()),
+               updated_at   = now()
          WHERE id = ${a.session_id}::uuid AND status <> 'completed'
       `;
     }

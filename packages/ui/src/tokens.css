@@ -333,6 +333,23 @@ html, body {
 .cap-btn-lg { font-size: var(--cap-text-md);   padding: 10px 20px; border-radius: var(--cap-radius-md); }
 .cap-btn-xl { font-size: var(--cap-text-lg);   padding: 13px 28px; border-radius: var(--cap-radius-lg); font-weight: 600; letter-spacing: -0.01em; }
 
+/* ─── CTA link (accent pill, used in server components) ───────────────── */
+.cap-cta-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: var(--cap-accent);
+  color: #fff;
+  border-radius: var(--cap-radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity var(--cap-transition);
+}
+.cap-cta-link:hover { opacity: 0.88; }
+.cap-cta-link:focus-visible { outline: 2px solid var(--cap-fg-1); outline-offset: 3px; }
+
 /* ─── Card component ───────────────────────────────────────────────────── */
 .cap-card {
   background: var(--cap-surface);
@@ -519,6 +536,22 @@ html, body {
 
 .cap-table-row:hover { background: var(--cap-surface-hover); }
 .cap-table-row:last-child { border-bottom: none; }
+
+/* Flag reference <details> toggle */
+.cap-flag-reference-summary::-webkit-details-marker { display: none; }
+.cap-flag-reference-summary:hover { background: var(--cap-surface-hover) !important; color: var(--cap-fg-1) !important; }
+details[open] .cap-flag-reference-chevron { transform: rotate(180deg); }
+.cap-flag-reference-chevron { transition: transform var(--cap-transition); }
+
+/* Flag row: highlight when navigated to via URL hash */
+.cap-flag-row:target {
+  background: var(--cap-accent-surface) !important;
+  outline: 1px solid var(--cap-accent);
+  outline-offset: -1px;
+}
+
+/* Reason link in flags table */
+a.cap-flag-reason:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 /* ─── Motion keyframes ─────────────────────────────────────────────────── */
 @keyframes cap-fadeslide {

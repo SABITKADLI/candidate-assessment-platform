@@ -146,13 +146,18 @@ export default async function SessionsPage() {
                       <tr key={s.id} className="cap-table-row">
                         <td style={{
                           padding: '11px 14px',
-                          color: 'var(--cap-fg-1)',
                           maxWidth: 200,
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
+                          fontWeight: 500,
                         }}>
-                          {s.email ?? <span style={{ color: 'var(--cap-fg-3)' }}>—</span>}
+                          <a
+                            href={`/sessions/${s.id}`}
+                            style={{ color: 'var(--cap-accent)', textDecoration: 'none' }}
+                          >
+                            {s.email ?? <span style={{ color: 'var(--cap-fg-3)' }}>—</span>}
+                          </a>
                         </td>
                         <td style={{
                           padding: '11px 14px',

@@ -3,20 +3,17 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@cap/ui';
 
-// 10 canonical Rorschach cards represented as SVG gradient blobs.
-// Real plates are proprietary; these are procedurally generated symmetric shapes
-// for dev/legal-safe use. In production, replace src with licensed plate scans.
 const CARDS = [
-  { id: 'R01', label: 'Card I',   hue: 220 },
-  { id: 'R02', label: 'Card II',  hue: 0   },
-  { id: 'R03', label: 'Card III', hue: 0   },
-  { id: 'R04', label: 'Card IV',  hue: 220 },
-  { id: 'R05', label: 'Card V',   hue: 220 },
-  { id: 'R06', label: 'Card VI',  hue: 220 },
-  { id: 'R07', label: 'Card VII', hue: 220 },
-  { id: 'R08', label: 'Card VIII',hue: 200 },
-  { id: 'R09', label: 'Card IX',  hue: 120 },
-  { id: 'R10', label: 'Card X',   hue: 200 },
+  { id: 'R01', label: 'Card I',    src: '/rorschach/card_01.jpg' },
+  { id: 'R02', label: 'Card II',   src: '/rorschach/card_02.jpg' },
+  { id: 'R03', label: 'Card III',  src: '/rorschach/card_03.jpg' },
+  { id: 'R04', label: 'Card IV',   src: '/rorschach/card_04.jpg' },
+  { id: 'R05', label: 'Card V',    src: '/rorschach/card_05.jpg' },
+  { id: 'R06', label: 'Card VI',   src: '/rorschach/card_06.jpg' },
+  { id: 'R07', label: 'Card VII',  src: '/rorschach/card_07.jpg' },
+  { id: 'R08', label: 'Card VIII', src: '/rorschach/card_08.jpg' },
+  { id: 'R09', label: 'Card IX',   src: '/rorschach/card_09.jpg' },
+  { id: 'R10', label: 'Card X',    src: '/rorschach/card_10.jpg' },
 ];
 
 const MIN_CHARS = 20;
@@ -125,23 +122,41 @@ export function RorschachPlayer() {
         <div style={{ height: '100%', borderRadius: 2, background: 'var(--cap-accent)', width: `${((cardIdx) / CARDS.length) * 100}%` }} />
       </div>
 
-      {/* Inkblot placeholder */}
+      {/* Inkblot image — fixed 480×360 display area, image fills via object-fit */}
       <div style={{
-        width: '100%', aspectRatio: '4/3',
-        background: `radial-gradient(ellipse at 50% 40%, hsl(${card.hue},15%,25%) 0%, hsl(${card.hue},8%,12%) 60%, hsl(${card.hue},5%,8%) 100%)`,
+        width: '100%',
+        maxWidth: 480,
+        margin: '0 auto',
+        aspectRatio: '4/3',
+        background: '#fff',
         borderRadius: 'var(--cap-radius-lg)',
         border: '1px solid var(--cap-border)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexDirection: 'column', gap: 8,
-        position: 'relative', overflow: 'hidden',
+        overflow: 'hidden',
+        position: 'relative',
+        boxShadow: 'var(--cap-shadow-md)',
       }}>
-        {/* Symmetric blob shape */}
-        <InkBlob seed={cardIdx} hue={card.hue} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          key={card.src}
+          src={card.src}
+          alt={`Rorschach inkblot ${card.label}`}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            objectPosition: 'center',
+            display: 'block',
+          }}
+          draggable={false}
+        />
         {phase === 'viewing' && (
           <div style={{
-            position: 'absolute', bottom: 12, right: 16,
-            fontFamily: 'var(--cap-font-mono)', fontSize: 13,
-            color: 'rgba(255,255,255,0.5)',
+            position: 'absolute', bottom: 10, right: 14,
+            fontFamily: 'var(--cap-font-mono)', fontSize: 12,
+            color: 'rgba(0,0,0,0.4)',
+            background: 'rgba(255,255,255,0.7)',
+            padding: '2px 6px',
+            borderRadius: 4,
           }}>
             {timer}s
           </div>
@@ -214,23 +229,6 @@ function AutoStart({ onMount }: { onMount: () => void }) {
   return null;
 }
 
-function InkBlob({ seed, hue }: { seed: number; hue: number }) {
-  // Deterministic symmetric blob from seed.
-  const pts = Array.from({ length: 6 }, (_, i) => {
-    const r = 60 + ((seed * 17 + i * 31) % 40);
-    const a = (i / 6) * Math.PI; // upper half only; mirrored
-    return { x: 200 + r * Math.cos(a), y: 150 - r * Math.sin(a) };
-  });
-  const mirror = [...pts].reverse().map((p) => ({ x: p.x, y: 300 - p.y }));
-  const all = [...pts, ...mirror];
-  const d = all.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ') + ' Z';
-
-  return (
-    <svg viewBox="0 0 400 300" width="70%" height="70%" style={{ opacity: 0.85 }}>
-      <path d={d} fill={`hsl(${hue},10%,45%)`} />
-    </svg>
-  );
-}
 
 function Status({ children, tone = 'default' }: { children: React.ReactNode; tone?: 'default' | 'danger' | 'success' }) {
   const color = tone === 'danger' ? 'var(--cap-danger)' : tone === 'success' ? 'var(--cap-success)' : 'var(--cap-fg-2)';

@@ -72,7 +72,7 @@ export async function runSandbox(req: RunRequest, opts: DockerOptions): Promise<
     '-v', `${outDir}:/out:rw`,
   ];
   if (opts.seccompPath) args.push('--security-opt', `seccomp=${opts.seccompPath}`);
-  args.push(opts.image, 'node', '/runner/runner.js', '/in/job.json', '/out/result.json');
+  args.push(opts.image, 'node', '/runner/src/runner.js', '/in/job.json', '/out/result.json');
 
   const start = Date.now();
   const grace = opts.gracePeriodMs ?? 2000;

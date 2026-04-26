@@ -24,7 +24,7 @@ type UiState =
   | { phase: 'done'; score: number; correct: number; total: number }
   | { phase: 'error'; detail: string };
 
-export function GmaPlayer() {
+export function GmaPlayer({ token }: { token: string }) {
   const [ui, setUi] = useState<UiState>({ phase: 'loading' });
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
   const itemStart = useRef<number>(0);
@@ -55,6 +55,8 @@ export function GmaPlayer() {
       if (data.kind === 'done') {
         setUi({ phase: 'done', score: data.score, correct: data.correct, total: data.total });
         setRemainingMs(null);
+        // Navigate back to the token router which picks the next unfinished stage.
+        setTimeout(() => { window.location.href = `/s/${token}`; }, 1200);
         return;
       }
       itemStart.current = Date.now();
@@ -91,7 +93,7 @@ export function GmaPlayer() {
   if (ui.phase === 'done') {
     return (
       <Status tone="success">
-        Stage complete. You answered {ui.correct} of {ui.total} correctly. Score: {ui.score}.
+        Section complete — {ui.correct} of {ui.total} correct. Moving to the next section…
       </Status>
     );
   }

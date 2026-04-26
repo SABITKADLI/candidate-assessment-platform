@@ -19,7 +19,7 @@ cat > "$STAGE/runner-src/package.json" <<'JSON'
   "private": true,
   "type": "module",
   "dependencies": {},
-  "devDependencies": { "typescript": "5.6.3" }
+  "devDependencies": { "typescript": "5.6.3", "@types/node": "20" }
 }
 JSON
 
@@ -30,7 +30,6 @@ cat > "$STAGE/runner-src/tsconfig.json" <<'JSON'
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "outDir": "./dist",
-    "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true

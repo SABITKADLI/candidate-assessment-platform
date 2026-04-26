@@ -3,17 +3,24 @@
 import { useState } from 'react';
 import { Button, Input } from '@cap/ui';
 
-type Stage = 'A' | 'B';
+type Stage = 'A' | 'B' | 'AB';
 type FormState = 'idle' | 'submitting' | 'done' | 'error';
 
+const STAGE_OPTIONS: { value: Stage; label: string; sub: string }[] = [
+  { value: 'A',  label: 'Stage A',        sub: 'Screening only'          },
+  { value: 'B',  label: 'Stage B',        sub: 'Technical only'          },
+  { value: 'AB', label: 'Full pipeline',  sub: 'A → B auto-chained'      },
+];
+
 export function NewSessionForm() {
-  const [email, setEmail] = useState('');
-  const [stage, setStage] = useState<Stage>('A');
+  const [email, setEmail]             = useState('');
+  const [stage, setStage]             = useState<Stage>('AB');
   const [expiryHours, setExpiryHours] = useState(48);
-  const [formState, setFormState] = useState<FormState>('idle');
-  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [formState, setFormState]     = useState<FormState>('idle');
+  const [inviteUrl, setInviteUrl]     = useState<string | null>(null);
+  const [isPipeline, setIsPipeline]   = useState(false);
+  const [errorMsg, setErrorMsg]       = useState<string | null>(null);
+  const [copied, setCopied]           = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,8 +41,9 @@ export function NewSessionForm() {
       return;
     }
 
-    const { invite_url } = await res.json() as { invite_url: string };
-    setInviteUrl(invite_url);
+    const data = await res.json() as { invite_url: string; pipeline: boolean };
+    setInviteUrl(data.invite_url);
+    setIsPipeline(data.pipeline);
     setFormState('done');
   }
 
@@ -49,10 +57,11 @@ export function NewSessionForm() {
 
   function reset() {
     setEmail('');
-    setStage('A');
+    setStage('AB');
     setExpiryHours(48);
     setFormState('idle');
     setInviteUrl(null);
+    setIsPipeline(false);
     setErrorMsg(null);
     setCopied(false);
   }
@@ -61,11 +70,13 @@ export function NewSessionForm() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--cap-fg-2)' }}>
-          Session created. Share this link with the candidate:
+          {isPipeline
+            ? 'Pipeline created. Share the Stage A link — the candidate will automatically continue to Stage B after completing it.'
+            : 'Session created. Share this link with the candidate:'}
         </p>
         <div style={{
           display: 'flex', gap: 8, alignItems: 'center',
-          background: 'var(--cap-surface)', border: '1px solid var(--cap-border)',
+          background: 'var(--cap-surface-2)', border: '1px solid var(--cap-border)',
           borderRadius: 'var(--cap-radius-md)', padding: '10px 12px',
         }}>
           <span style={{
@@ -76,6 +87,14 @@ export function NewSessionForm() {
             {copied ? 'Copied!' : 'Copy'}
           </Button>
         </div>
+        {isPipeline && (
+          <p style={{
+            margin: 0, fontSize: 12, color: 'var(--cap-fg-3)',
+            fontFamily: 'var(--cap-font-mono)',
+          }}>
+            Stage B is pre-created and will be offered automatically on the completion screen.
+          </p>
+        )}
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <Button variant="secondary" onClick={reset}>Create another</Button>
         </div>
@@ -94,29 +113,35 @@ export function NewSessionForm() {
         placeholder="candidate@example.com"
       />
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--cap-fg-2)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-          Stage group
+          Stage
         </span>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {(['A', 'B'] as const).map((s) => (
-            <label key={s} style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 14px', cursor: 'pointer',
-              border: `1px solid ${stage === s ? 'var(--cap-accent)' : 'var(--cap-border)'}`,
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {STAGE_OPTIONS.map((opt) => (
+            <label key={opt.value} style={{
+              display: 'flex', flexDirection: 'column', gap: 2,
+              padding: '10px 14px', cursor: 'pointer', flex: 1, minWidth: 100,
+              border: `1px solid ${stage === opt.value ? 'var(--cap-accent)' : 'var(--cap-border)'}`,
               borderRadius: 'var(--cap-radius-md)',
-              background: stage === s ? 'var(--cap-accent-surface)' : 'var(--cap-surface)',
-              fontSize: 13, color: stage === s ? 'var(--cap-fg-1)' : 'var(--cap-fg-2)',
+              background: stage === opt.value ? 'var(--cap-accent-surface)' : 'var(--cap-surface)',
             }}>
-              <input
-                type="radio"
-                name="stage"
-                value={s}
-                checked={stage === s}
-                onChange={() => setStage(s)}
-                style={{ accentColor: 'var(--cap-accent)' }}
-              />
-              Stage {s} {s === 'A' ? '(Screening)' : '(Technical)'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input
+                  type="radio"
+                  name="stage"
+                  value={opt.value}
+                  checked={stage === opt.value}
+                  onChange={() => setStage(opt.value)}
+                  style={{ accentColor: 'var(--cap-accent)' }}
+                />
+                <span style={{ fontSize: 13, fontWeight: 500, color: stage === opt.value ? 'var(--cap-fg-1)' : 'var(--cap-fg-2)' }}>
+                  {opt.label}
+                </span>
+              </div>
+              <span style={{ fontSize: 11, color: 'var(--cap-fg-3)', paddingLeft: 18 }}>
+                {opt.sub}
+              </span>
             </label>
           ))}
         </div>

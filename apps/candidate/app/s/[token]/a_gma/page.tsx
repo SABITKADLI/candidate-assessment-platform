@@ -7,7 +7,9 @@ import { AntibotBoot } from '@/lib/AntibotBoot';
 
 export const dynamic = 'force-dynamic';
 
-export default async function GmaPage() {
+export default async function GmaPage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params;
+
   const jar = await cookies();
   const sessionId = jar.get('cap_sess')?.value;
   if (!sessionId) redirect('/?reason=no_session');
@@ -29,7 +31,7 @@ export default async function GmaPage() {
         title="General mental ability"
         subtitle="10 questions. 12 minutes. Answer in order; you cannot go back. Do not switch tabs."
       >
-        <GmaPlayer />
+        <GmaPlayer token={token} />
       </StageShell>
     </>
   );

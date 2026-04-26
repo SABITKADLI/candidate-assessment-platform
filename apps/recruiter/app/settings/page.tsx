@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { auth0, auth0Configured } from '@/lib/auth0';
 import { Sidebar, Card } from '@cap/ui';
+import { RescorePanel } from '@/lib/RescorePanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -115,6 +116,41 @@ export default async function SettingsPage() {
               { label: 'Anthropic API key', value: process.env.ANTHROPIC_API_KEY ? '*** set ***' : '— not set' },
             ]}
           />
+
+          {/* Manual memo trigger */}
+          <Card style={{ marginBottom: 'var(--cap-space-4)', overflow: 'hidden' }}>
+            <div style={{
+              padding: '12px 20px',
+              borderBottom: '1px solid var(--cap-border)',
+              background: 'var(--cap-surface-2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+            }}>
+              <div>
+                <h2 style={{ margin: '0 0 2px', fontSize: 12, fontWeight: 600, color: 'var(--cap-fg-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Manual rescore
+                </h2>
+                <p style={{ margin: 0, fontSize: 11, color: 'var(--cap-fg-3)' }}>
+                  Compute composite + generate Claude memo for any session. Overwrites existing score &amp; memo.
+                </p>
+              </div>
+              <span style={{
+                fontSize: 10, fontWeight: 600, fontFamily: 'var(--cap-font-mono)',
+                color: process.env.ANTHROPIC_API_KEY ? 'var(--cap-success)' : 'var(--cap-danger)',
+                background: process.env.ANTHROPIC_API_KEY ? 'var(--cap-success-muted)' : 'var(--cap-danger-muted)',
+                padding: '2px 8px', borderRadius: 9999,
+                border: `1px solid ${process.env.ANTHROPIC_API_KEY ? 'var(--cap-success-border)' : 'var(--cap-danger-border)'}`,
+                flexShrink: 0,
+              }}>
+                {process.env.ANTHROPIC_API_KEY ? 'API key set' : 'No API key'}
+              </span>
+            </div>
+            <div style={{ padding: '16px 20px' }}>
+              <RescorePanel />
+            </div>
+          </Card>
         </div>
       </main>
     </div>

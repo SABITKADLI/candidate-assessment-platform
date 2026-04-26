@@ -4,6 +4,8 @@ import { sql } from '@cap/db';
 import { Sidebar, FlagBadge, Card } from '@cap/ui';
 import type { FlagSeverity } from '@cap/shared/enums';
 import { ShieldCheck } from 'lucide-react';
+import { FlagActions } from '@/lib/FlagActions';
+import { resolveFlagReason, FLAG_GROUPS, FLAG_REASON_MAP } from '@/lib/flagReasons';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +19,138 @@ type FlagRow = {
   session_id: string;
   stage_key: string | null;
 };
+
+const SEV_COLOR: Record<FlagSeverity, string> = {
+  critical: 'var(--cap-critical)',
+  high:     'var(--cap-danger)',
+  medium:   'var(--cap-warning)',
+  low:      'var(--cap-fg-2)',
+  info:     'var(--cap-info)',
+};
+
+const SEV_BG: Record<FlagSeverity, string> = {
+  critical: 'var(--cap-critical-muted)',
+  high:     'var(--cap-danger-muted)',
+  medium:   'var(--cap-warning-muted)',
+  low:      'var(--cap-surface-3)',
+  info:     'var(--cap-info-muted)',
+};
+
+function FlagReference() {
+  return (
+    <details style={{ marginBottom: 'var(--cap-space-8)' }}>
+      <summary style={{
+        listStyle: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        cursor: 'pointer',
+        userSelect: 'none',
+        padding: '10px 16px',
+        background: 'var(--cap-surface)',
+        border: '1px solid var(--cap-border)',
+        borderRadius: 'var(--cap-radius-lg)',
+        fontSize: 13,
+        fontWeight: 500,
+        color: 'var(--cap-fg-2)',
+        transition: 'background var(--cap-transition), color var(--cap-transition)',
+      }}
+        className="cap-flag-reference-summary"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+          stroke="var(--cap-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+          aria-hidden style={{ flexShrink: 0 }}>
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" x2="12" y1="8" y2="12" />
+          <line x1="12" x2="12.01" y1="16" y2="16" />
+        </svg>
+        Flag reference — what each flag type means
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+          aria-hidden style={{ marginLeft: 'auto', flexShrink: 0 }}
+          className="cap-flag-reference-chevron"
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </summary>
+
+      <div style={{
+        border: '1px solid var(--cap-border)',
+        borderTop: 'none',
+        borderRadius: '0 0 var(--cap-radius-lg) var(--cap-radius-lg)',
+        background: 'var(--cap-surface)',
+        padding: '20px 20px 20px',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+        gap: 20,
+      }}>
+        {FLAG_GROUPS.map((group) => (
+          <div key={group.title}>
+            <div style={{
+              fontSize: 10,
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: 'var(--cap-fg-3)',
+              marginBottom: 10,
+              paddingBottom: 6,
+              borderBottom: '1px solid var(--cap-border)',
+            }}>
+              {group.title}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {group.reasons.map((reasonKey) => {
+                const info = FLAG_REASON_MAP[reasonKey];
+                if (!info) return null;
+                return (
+                  <div key={reasonKey} style={{
+                    display: 'flex',
+                    gap: 10,
+                    alignItems: 'flex-start',
+                  }}>
+                    {/* Severity pill */}
+                    <span style={{
+                      flexShrink: 0,
+                      marginTop: 1,
+                      fontSize: 9,
+                      fontWeight: 700,
+                      fontFamily: 'var(--cap-font-mono)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      background: SEV_BG[info.severity],
+                      color: SEV_COLOR[info.severity],
+                      lineHeight: 1.6,
+                    }}>
+                      {info.severity}
+                    </span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--cap-fg-1)', marginBottom: 1 }}>
+                        {info.label}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--cap-fg-2)', lineHeight: 1.55 }}>
+                        {info.description}
+                      </div>
+                      <div style={{
+                        marginTop: 3,
+                        fontFamily: 'var(--cap-font-mono)',
+                        fontSize: 10,
+                        color: 'var(--cap-fg-3)',
+                      }}>
+                        {reasonKey} · score {info.scoreDelta}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}
 
 function EmptyState() {
   return (
@@ -112,7 +246,7 @@ function FlagSection({
         >
           <thead>
             <tr>
-              {['Severity', 'Reason', 'Stage', 'Candidate', 'Raised'].map((h) => (
+              {['Severity', 'Reason', 'Stage', 'Candidate', 'Raised', 'Actions'].map((h) => (
                 <th key={h} scope="col" style={TH_STYLE}>{h}</th>
               ))}
             </tr>
@@ -120,6 +254,8 @@ function FlagSection({
           <tbody>
             {flags.map((f) => {
               const isCritical = f.severity === 'critical' && !muted;
+              const sessionHref = `/sessions/${f.session_id}`;
+              const flagHref   = `/sessions/${f.session_id}#flag-${f.id}`;
               return (
                 <tr
                   key={f.id}
@@ -134,15 +270,39 @@ function FlagSection({
                   </td>
                   <td style={{
                     padding: '11px 14px',
-                    fontFamily: 'var(--cap-font-mono)',
-                    fontSize: 11,
-                    color: isCritical ? 'var(--cap-fg-1)' : 'var(--cap-fg-1)',
                     maxWidth: 280,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
                   }}>
-                    {f.reason}
+                    {(() => {
+                      const info = resolveFlagReason(f.reason);
+                      return (
+                        <a
+                          href={flagHref}
+                          className="cap-flag-reason"
+                          style={{ textDecoration: 'none' }}
+                          title={info.description}
+                        >
+                          <span style={{
+                            display: 'block',
+                            fontSize: 12,
+                            fontWeight: 500,
+                            color: isCritical ? 'var(--cap-danger)' : 'var(--cap-fg-1)',
+                            marginBottom: 1,
+                          }}>
+                            {info.label}
+                          </span>
+                          <span style={{
+                            fontFamily: 'var(--cap-font-mono)',
+                            fontSize: 10,
+                            color: 'var(--cap-fg-3)',
+                          }}>
+                            {f.reason}
+                          </span>
+                        </a>
+                      );
+                    })()}
                   </td>
                   <td style={{
                     padding: '11px 14px',
@@ -156,13 +316,18 @@ function FlagSection({
                   <td style={{
                     padding: '11px 14px',
                     fontSize: 13,
-                    color: 'var(--cap-fg-2)',
                     maxWidth: 180,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
                   }}>
-                    {f.email ?? '—'}
+                    <a
+                      href={sessionHref}
+                      style={{ color: 'var(--cap-accent)', textDecoration: 'none', fontWeight: 500 }}
+                      title="Open session detail"
+                    >
+                      {f.email ?? '—'}
+                    </a>
                   </td>
                   <td style={{
                     padding: '11px 14px',
@@ -172,6 +337,9 @@ function FlagSection({
                     whiteSpace: 'nowrap',
                   }}>
                     {f.created_at.toISOString().slice(0, 16).replace('T', ' ')}
+                  </td>
+                  <td style={{ padding: '11px 14px' }}>
+                    <FlagActions id={f.id} resolved={f.resolved} severity={f.severity} />
                   </td>
                 </tr>
               );
@@ -227,6 +395,8 @@ export default async function FlagsPage() {
               : `${resolved.length} resolved`}
           </p>
         </header>
+
+        <FlagReference />
 
         {flags.length === 0 ? (
           <Card>

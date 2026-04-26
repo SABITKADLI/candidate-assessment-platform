@@ -60,11 +60,13 @@ const worker = new Worker<JobData>(
     if (!SKIP_MEMO) {
       try {
         memo = await generateMemo({ session_id, composite });
-        if (memo.s3_key) {
-          await sql`
-            UPDATE app.scores SET memo_s3_key = ${memo.s3_key} WHERE session_id = ${session_id}::uuid
-          `;
-        }
+        await sql`
+          UPDATE app.scores
+          SET memo_text       = ${memo.markdown},
+              recommendation  = ${memo.recommendation},
+              memo_s3_key     = ${memo.s3_key ?? null}
+          WHERE session_id = ${session_id}::uuid
+        `;
         await auditLog('scoring-worker', 'memo.generate',
           `session:${session_id}`, { recommendation: memo.recommendation, s3: !!memo.s3_key });
       } catch (e) {

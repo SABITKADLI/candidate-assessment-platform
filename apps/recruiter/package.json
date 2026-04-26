@@ -12,6 +12,7 @@
     "clean": "rm -rf .next .turbo"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
     "@auth0/nextjs-auth0": "^4.0.2",
     "@cap/db": "workspace:*",
     "@cap/shared": "workspace:*",
