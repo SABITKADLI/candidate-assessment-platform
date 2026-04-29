@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@cap/ui';
 import { SJT_SCENARIOS, scoreSjt, type SjtOptionKey } from './sjt-items';
 
@@ -11,6 +11,7 @@ export function SjtPlayer() {
   const [scenarioIdx, setScenarioIdx] = useState(0);
   const [phase, setPhase] = useState<Phase>('questions');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const startTimeRef = useRef<number>(Date.now());
 
   const scenario = SJT_SCENARIOS[scenarioIdx]!;
   const totalAnswered = Object.keys(answers).length;
@@ -20,12 +21,38 @@ export function SjtPlayer() {
 
   async function finish(finalAnswers: Record<string, SjtOptionKey>) {
     setPhase('submitting');
+    const duration_s = Math.round((Date.now() - startTimeRef.current) / 1000);
     const score = scoreSjt(finalAnswers);
+
+    // Build enriched items with scenario text and chosen option text for memo
+    const items = SJT_SCENARIOS.map((s) => {
+      const chosenKey = finalAnswers[s.id];
+      const chosenOpt = s.options.find((o) => o.key === chosenKey);
+      return {
+        id: s.id,
+        situation: s.situation,
+        chosen_key: chosenKey ?? null,
+        chosen_text: chosenOpt?.text ?? null,
+        item_score: chosenOpt?.score ?? null,
+        isAttentionCheck: s.isAttentionCheck ?? false,
+      };
+    });
+
+    // Detect attention check failures
+    const attentionCheckFailures = SJT_SCENARIOS
+      .filter((s) => s.isAttentionCheck && s.correctKey && finalAnswers[s.id] !== s.correctKey)
+      .map((s) => ({ id: s.id, expected: s.correctKey, got: finalAnswers[s.id] ?? null }));
+
     const res = await fetch('/api/stages/complete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ stage_key: 'A_SJT', payload: { answers: finalAnswers }, score }),
+      body: JSON.stringify({
+        stage_key: 'A_SJT',
+        payload: { items, answers: finalAnswers, attention_check_failures: attentionCheckFailures },
+        score,
+        duration_s,
+      }),
     });
     if (!res.ok) {
       const j = await res.json().catch(() => ({})) as { error?: string };
@@ -75,13 +102,15 @@ export function SjtPlayer() {
       {/* Situation */}
       <div style={{
         padding: '16px 18px',
-        background: 'var(--cap-surface-2, rgba(255,255,255,0.04))',
-        border: '1px solid var(--cap-border)',
+        background: scenario.isAttentionCheck
+          ? 'var(--cap-accent-surface)'
+          : 'var(--cap-surface-2, rgba(255,255,255,0.04))',
+        border: `1px solid ${scenario.isAttentionCheck ? 'var(--cap-accent-hover)' : 'var(--cap-border)'}`,
         borderRadius: 'var(--cap-radius-md)',
         fontSize: 14, lineHeight: 1.7, color: 'var(--cap-fg-1)',
       }}>
         <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--cap-fg-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Situation
+          {scenario.isAttentionCheck ? 'Attention Check' : 'Situation'}
         </p>
         {scenario.situation}
       </div>

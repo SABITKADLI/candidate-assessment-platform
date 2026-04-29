@@ -102,6 +102,18 @@ export const FLAG_REASON_MAP: Record<string, FlagReasonInfo> = {
     description: 'Candidate failed a tap/gesture challenge injected by the system to verify a human is present.',
     severity: 'high', scoreDelta: -6,
   },
+
+  // Response integrity
+  'timing.too_fast': {
+    label: 'Stage completed too quickly',
+    description: 'Stage was completed in less than 50% of the median time for similar sessions, or below the absolute minimum — answers may not reflect genuine reading.',
+    severity: 'medium', scoreDelta: -4,
+  },
+  'attention.check_failed': {
+    label: 'Attention check failed',
+    description: 'Candidate failed one or more embedded validity items where the correct response was explicitly stated — indicates random clicking or inattentive responding.',
+    severity: 'medium', scoreDelta: -5,
+  },
 };
 
 export const FLAG_GROUPS: FlagGroup[] = [
@@ -124,6 +136,10 @@ export const FLAG_GROUPS: FlagGroup[] = [
   {
     title: 'Verification Challenge',
     reasons: ['puzzle.failed'],
+  },
+  {
+    title: 'Response Integrity',
+    reasons: ['timing.too_fast', 'attention.check_failed'],
   },
 ];
 

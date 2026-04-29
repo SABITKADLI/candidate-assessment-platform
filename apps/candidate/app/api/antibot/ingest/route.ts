@@ -104,9 +104,38 @@ export async function POST(req: NextRequest) {
     batch.seq === 2 ||
     (score.flags.filter((f) => f.severity === 'medium' || f.severity === 'high').length >= 2);
   if (shouldChallenge) {
-    res.puzzle = { kind: 'tap_seq', seed: randomUUID() };
+    res.puzzle = makePuzzle();
   }
   return Response.json(res);
+}
+
+// ── Puzzle factory — random kind each trigger ────────────────────────────────
+const WORD_POOL = ['SUBMIT','CONFIRM','ACCEPT','CONTINUE','NEXT','CANCEL','DECLINE','SKIP','CLEAR','START'];
+
+function makePuzzle(): { kind: 'tap_seq' | 'word_match' | 'math_simple'; seed: string } {
+  const roll = Math.random();
+  if (roll < 0.34) {
+    // tap_seq: tap 5 numbered dots in order
+    return { kind: 'tap_seq', seed: randomUUID() };
+  }
+  if (roll < 0.67) {
+    // word_match: click the button matching the target word
+    const shuffled = [...WORD_POOL].sort(() => Math.random() - 0.5);
+    const options = shuffled.slice(0, 4);
+    const target = options[Math.floor(Math.random() * 4)]!;
+    return { kind: 'word_match', seed: JSON.stringify({ target, options }) };
+  }
+  // math_simple: solve A + B
+  const a = 2 + Math.floor(Math.random() * 8);
+  const b = 2 + Math.floor(Math.random() * 8);
+  const correct = a + b;
+  const distractors = new Set<number>();
+  while (distractors.size < 3) {
+    const d = correct + (Math.floor(Math.random() * 5) - 2);
+    if (d !== correct && d > 0) distractors.add(d);
+  }
+  const options = [...distractors, correct].sort(() => Math.random() - 0.5);
+  return { kind: 'math_simple', seed: JSON.stringify({ a, b, options, correct }) };
 }
 
 function bad(reason: string) {

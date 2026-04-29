@@ -28,3 +28,13 @@ pgdata/
 *.tsbuildinfo
 # Added by code-review-graph
 .code-review-graph/
+
+# Dev / local tooling — not for version control
+.claude/
+.obsidian/
+.mcp.json
+.uploads/
+.impeccable.md
+impeccable-*.html
+impeccable-*.md
+CLAUDE.md

@@ -14,6 +14,8 @@ export interface SjtScenario {
   id: string;
   situation: string;
   options: SjtOption[];
+  isAttentionCheck?: true;
+  correctKey?: SjtOptionKey;
 }
 
 export const SJT_SCENARIOS: SjtScenario[] = [
@@ -108,6 +110,19 @@ export const SJT_SCENARIOS: SjtScenario[] = [
     ],
   },
   {
+    // Attention check — placed mid-test to catch random clickers.
+    id: 'SJT_ACK1',
+    isAttentionCheck: true,
+    correctKey: 'C',
+    situation: 'Attention check — this item confirms you are reading carefully. Please select option C: "I am reading and understanding each scenario."',
+    options: [
+      { key: 'A', score: 0, text: 'I am selecting answers without reading them.' },
+      { key: 'B', score: 0, text: 'I am guessing randomly.' },
+      { key: 'C', score: 4, text: 'I am reading and understanding each scenario.' },
+      { key: 'D', score: 0, text: 'I am rushing through to finish quickly.' },
+    ],
+  },
+  {
     id: 'SJT10',
     situation: 'You are onboarding at a new company. You notice the team uses a coding pattern that you know from research to cause performance problems at scale.',
     options: [
@@ -121,8 +136,9 @@ export const SJT_SCENARIOS: SjtScenario[] = [
 
 export function scoreSjt(answers: Record<string, SjtOptionKey>): number {
   let total = 0;
-  const maxPossible = SJT_SCENARIOS.length * 4;
-  for (const scenario of SJT_SCENARIOS) {
+  const realScenarios = SJT_SCENARIOS.filter(s => !s.isAttentionCheck);
+  const maxPossible = realScenarios.length * 4;
+  for (const scenario of realScenarios) {
     const chosen = answers[scenario.id];
     if (!chosen) continue;
     const opt = scenario.options.find((o) => o.key === chosen);

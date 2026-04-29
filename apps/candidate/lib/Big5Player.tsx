@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@cap/ui';
 import { BIG5_ITEMS, LIKERT_LABELS, scoreBig5, type LikertValue } from './big5-items';
 
-const PAGE_SIZE = 10; // items per page
+const PAGE_SIZE = 10;
 const TOTAL_PAGES = Math.ceil(BIG5_ITEMS.length / PAGE_SIZE);
 
 type Phase = 'questions' | 'submitting' | 'done' | 'error';
@@ -14,6 +14,7 @@ export function Big5Player() {
   const [page, setPage] = useState(0);
   const [phase, setPhase] = useState<Phase>('questions');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const startTimeRef = useRef<number>(Date.now());
 
   const pageItems = BIG5_ITEMS.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const pageAnswered = pageItems.every((item) => answers[item.id] != null);
@@ -29,15 +30,33 @@ export function Big5Player() {
     if (!pageAnswered) return;
     setPhase('submitting');
 
+    const duration_s = Math.round((Date.now() - startTimeRef.current) / 1000);
     const scores = scoreBig5(answers);
+
+    // Build enriched items array with question text for memo evaluation
+    const items = BIG5_ITEMS.map((item) => ({
+      id: item.id,
+      text: item.text,
+      factor: item.factor,
+      keyed: item.keyed,
+      answer: answers[item.id] ?? null,
+      isCheck: item.isCheck ?? false,
+    }));
+
+    // Detect attention check failures
+    const attentionCheckFailures = BIG5_ITEMS
+      .filter((item) => item.isCheck && answers[item.id] !== item.checkValue)
+      .map((item) => ({ id: item.id, expected: item.checkValue, got: answers[item.id] ?? null }));
+
     const res = await fetch('/api/stages/complete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
       body: JSON.stringify({
         stage_key: 'A_BIG5',
-        payload: { answers, scores },
+        payload: { items, scores, attention_check_failures: attentionCheckFailures },
         score: Math.round(Object.values(scores).reduce((a, b) => a + b, 0) / 5),
+        duration_s,
       }),
     });
 
@@ -109,7 +128,12 @@ export function Big5Player() {
             padding: '10px 0',
             borderBottom: idx < pageItems.length - 1 ? '1px solid var(--cap-border)' : 'none',
           }}>
-            <span style={{ fontSize: 14, color: 'var(--cap-fg-1)', paddingRight: 12 }}>
+            <span style={{
+              fontSize: 14,
+              color: item.isCheck ? 'var(--cap-accent)' : 'var(--cap-fg-1)',
+              paddingRight: 12,
+              fontStyle: item.isCheck ? 'italic' : 'normal',
+            }}>
               {item.text}
             </span>
             {LIKERT_LABELS.map((l) => {
@@ -140,7 +164,7 @@ export function Big5Player() {
           ← Previous
         </Button>
         {isLastPage ? (
-          <Button variant="primary" disabled={!pageAnswered} onClick={finish}>
+          <Button variant="primary" disabled={!pageAnswered} onClick={() => void finish()}>
             Submit
           </Button>
         ) : (

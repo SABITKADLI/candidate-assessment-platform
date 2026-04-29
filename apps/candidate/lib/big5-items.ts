@@ -3,12 +3,15 @@
 // Factors: O=Openness, C=Conscientiousness, E=Extraversion, A=Agreeableness, N=Neuroticism
 
 export type Factor = 'O' | 'C' | 'E' | 'A' | 'N';
+export type LikertValue = 1 | 2 | 3 | 4 | 5;
 
 export interface Big5Item {
   id: string;
   text: string;
   factor: Factor;
   keyed: '+' | '-';
+  isCheck?: true;
+  checkValue?: LikertValue;
 }
 
 export const BIG5_ITEMS: Big5Item[] = [
@@ -37,6 +40,9 @@ export const BIG5_ITEMS: Big5Item[] = [
   { id:'N22', factor:'N', keyed:'-', text:'I feel comfortable with myself.' },
   { id:'N23', factor:'N', keyed:'-', text:'I accept myself for who I am.' },
   { id:'N24', factor:'N', keyed:'-', text:'I rarely get rattled.' },
+  // Attention check — psychometric validity item. Correct answer is specified in the text.
+  { id:'ACK1', factor:'N', keyed:'+', isCheck: true, checkValue: 4,
+    text:'Quality check: please select "Agree a little" (the 4th option) for this item.' },
   // ── Extraversion (E) ─────────────────────────────────────────────────────────
   { id:'E01', factor:'E', keyed:'+', text:'I am the life of the party.' },
   { id:'E02', factor:'E', keyed:'+', text:'I feel comfortable around people.' },
@@ -112,6 +118,9 @@ export const BIG5_ITEMS: Big5Item[] = [
   { id:'A22', factor:'A', keyed:'-', text:'I can\'t be bothered with others\' needs.' },
   { id:'A23', factor:'A', keyed:'-', text:'I hold grudges.' },
   { id:'A24', factor:'A', keyed:'-', text:'I am hard to please.' },
+  // Attention check — confirms the candidate is still reading each item carefully.
+  { id:'ACK2', factor:'A', keyed:'-', isCheck: true, checkValue: 2,
+    text:'Verification item: to confirm you are reading, please select "Disagree a little" (the 2nd option).' },
   // ── Conscientiousness (C) ────────────────────────────────────────────────────
   { id:'C01', factor:'C', keyed:'+', text:'I am always prepared.' },
   { id:'C02', factor:'C', keyed:'+', text:'I pay attention to details.' },
@@ -148,8 +157,6 @@ export const LIKERT_LABELS = [
   { value: 5, label: 'Agree strongly' },
 ] as const;
 
-export type LikertValue = 1 | 2 | 3 | 4 | 5;
-
 /** Raw score → T-score per factor (mean=50, SD=10). Norms are approximate.
  *  In production replace with validated normative tables per sex/age cohort. */
 export function scoreBig5(answers: Record<string, LikertValue>): Record<Factor, number> {
@@ -157,6 +164,7 @@ export function scoreBig5(answers: Record<string, LikertValue>): Record<Factor, 
   const counts: Record<Factor, number> = { N: 0, E: 0, O: 0, A: 0, C: 0 };
 
   for (const item of BIG5_ITEMS) {
+    if (item.isCheck) continue;
     const raw = answers[item.id];
     if (raw == null) continue;
     const scored = item.keyed === '+' ? raw : (6 - raw) as LikertValue;

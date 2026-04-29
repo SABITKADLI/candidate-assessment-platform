@@ -79,7 +79,7 @@ export type SignalBatch = z.infer<typeof zSignalBatch>;
 export const zIngestResponse = z.object({
   ok: z.literal(true),
   // Server may ask for a gesture puzzle; client surfaces it in the UI.
-  puzzle: z.object({ kind: z.enum(['drag', 'rotate', 'tap_seq']), seed: z.string() }).optional(),
+  puzzle: z.object({ kind: z.enum(['drag', 'rotate', 'tap_seq', 'word_match', 'math_simple']), seed: z.string() }).optional(),
   // Advisory: if true, client should flush more aggressively.
   flush_now: z.boolean().optional(),
 });

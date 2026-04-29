@@ -4,12 +4,16 @@ import { useEffect, useRef, useState } from 'react';
 import { AntibotClient } from '@cap/antibot/client';
 import type { StageKey } from '@cap/shared';
 import { TapSeqPuzzle } from './TapSeqPuzzle';
+import { WordMatchPuzzle } from './WordMatchPuzzle';
+import { MathPuzzle } from './MathPuzzle';
 
-interface PuzzleState { kind: 'tap_seq'; seed: string }
+type PuzzleKind = 'tap_seq' | 'word_match' | 'math_simple';
+interface PuzzleState { kind: PuzzleKind; seed: string }
+
+const HANDLED_KINDS = new Set<string>(['tap_seq', 'word_match', 'math_simple']);
 
 export function AntibotBoot({ stageKey }: { stageKey: StageKey }) {
   const [puzzle, setPuzzle] = useState<PuzzleState | null>(null);
-  // Ref mirrors state for the antibot callback (which closes over stale state).
   const puzzleLiveRef = useRef<boolean>(false);
   const clientRef = useRef<AntibotClient | null>(null);
 
@@ -17,10 +21,9 @@ export function AntibotBoot({ stageKey }: { stageKey: StageKey }) {
     const c = new AntibotClient(stageKey, {
       onFlushResponse: (r) => {
         if (!r.puzzle || puzzleLiveRef.current) return;
-        // Only handle puzzle kinds we've implemented. Unknown -> ignore.
-        if (r.puzzle.kind !== 'tap_seq') return;
+        if (!HANDLED_KINDS.has(r.puzzle.kind)) return;
         puzzleLiveRef.current = true;
-        setPuzzle({ kind: 'tap_seq', seed: r.puzzle.seed });
+        setPuzzle({ kind: r.puzzle.kind as PuzzleKind, seed: r.puzzle.seed });
         c.emit('puzzle.shown', { kind: r.puzzle.kind });
       },
     });
@@ -33,19 +36,26 @@ export function AntibotBoot({ stageKey }: { stageKey: StageKey }) {
   }, [stageKey]);
 
   if (!puzzle) return null;
-  return (
-    <TapSeqPuzzle
-      seed={puzzle.seed}
-      onSolved={() => {
-        clientRef.current?.emit('puzzle.solved', { kind: puzzle.kind });
-        puzzleLiveRef.current = false;
-        setPuzzle(null);
-      }}
-      onFailed={() => {
-        clientRef.current?.emit('puzzle.failed', { kind: puzzle.kind });
-        puzzleLiveRef.current = false;
-        setPuzzle(null);
-      }}
-    />
-  );
+
+  const onSolved = () => {
+    clientRef.current?.emit('puzzle.solved', { kind: puzzle.kind });
+    puzzleLiveRef.current = false;
+    setPuzzle(null);
+  };
+  const onFailed = () => {
+    clientRef.current?.emit('puzzle.failed', { kind: puzzle.kind });
+    puzzleLiveRef.current = false;
+    setPuzzle(null);
+  };
+
+  if (puzzle.kind === 'tap_seq') {
+    return <TapSeqPuzzle seed={puzzle.seed} onSolved={onSolved} onFailed={onFailed} />;
+  }
+  if (puzzle.kind === 'word_match') {
+    return <WordMatchPuzzle seed={puzzle.seed} onSolved={onSolved} onFailed={onFailed} />;
+  }
+  if (puzzle.kind === 'math_simple') {
+    return <MathPuzzle seed={puzzle.seed} onSolved={onSolved} onFailed={onFailed} />;
+  }
+  return null;
 }

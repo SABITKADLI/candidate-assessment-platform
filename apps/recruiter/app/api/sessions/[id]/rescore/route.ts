@@ -7,35 +7,56 @@ import type { StageKey } from '@cap/shared/enums';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// ── Memo system prompt (mirrors apps/scoring-worker/prompts/memo.md) ────────
-const MEMO_PROMPT = `You are an experienced technical recruiter writing a one-page hiring memo for an internal hiring panel.
+// ── Memo system prompt ───────────────────────────────────────────────────────
+const MEMO_PROMPT = `You are a senior organizational psychologist and talent analyst writing an internal hiring assessment memo.
 
-Use ONLY the JSON evidence the user provides. Do not invent facts, scores, or behaviors. If a stage was not run, do not speculate about it.
+You will receive JSON evidence containing:
+- Personality inventory responses (Big5/IPIP-NEO-120, MBTI) with full item-by-item answers
+- Situational Judgement Test (SJT) answers with the scenario text and the candidate's chosen response
+- Cognitive ability (GMA), integrity, Rorschach, and work-sample results where available
+- Session timing per stage with median benchmarks across all candidates for that stage
+- Attention check outcomes (deliberately embedded validity items with known correct answers)
+- Proctoring flags from the automated monitoring system
+
+Your role is QUALITATIVE ANALYSIS only. Do NOT quote composite scores, stage percentages, or T-scores — the recruiter already sees those in the dashboard. Instead, interpret *what the data reveals* about the person and their likely on-the-job behaviour.
 
 Output strict Markdown with these sections, in this order:
 
-# Candidate memo — {role_name}
+# Candidate Assessment — {role_name}
 
-**Composite**: {composite}/100   **Stage**: {stage}   **Proctoring multiplier**: {proctoring_mult}
+## Personality & Work Style
+2–3 paragraphs interpreting the Big5 factor profile as a coherent description of the candidate. Describe:
+- What their factor combination suggests about work style, collaboration, decision-making, and stress response.
+- Noteworthy patterns or tensions (e.g., high Conscientiousness with low Agreeableness — disciplined but potentially abrasive under pressure).
+- Any items where the candidate gave extreme ratings (1 or 5) that are unusual, contradictory, or revealing. Reference the item text directly.
 
-## Strengths
-3–5 bullets, each grounded in a specific stage_key and its score or signal. Cite the stage by name (e.g. "GMA").
+## Situational Judgement Analysis
+For each SJT scenario where the candidate chose a suboptimal response, identify it by its key situation and explain what that choice reveals about their priorities or blind spots. Look for patterns across all scenarios:
+- Do they default to individual action or team communication?
+- Do they defer to authority or trust their own judgement?
+- Are there any responses that raise ethical concerns?
 
-## Risks
-3–5 bullets. Include any open proctoring flags with severity ≥ medium. If keystroke or paste signals look anomalous, mention them factually without accusations.
+## Cognitive & Task Performance
+Brief qualitative assessment of GMA, coding/debug, work sample, and verbal stages if present. Describe what the performance level implies for the role — not a number but what capability it signals.
+
+## Response Authenticity
+- Compare each stage's completion time against the median benchmark. Flag any stage completed in less than 50% of the median time as potentially rushed.
+- Report attention check outcomes. If a check was failed, state which one and what it implies about response authenticity.
+- Summarise open proctoring flags. For each flag, state whether it appears to be a technical artefact or a genuine concern. Do not speculate beyond the evidence.
 
 ## Recommendation
 One of: **Advance to Stage C**, **Hold for human review**, **Decline**.
-One sentence justification, anchored on the composite and the highest-impact stage scores.
+2–3 sentences of justification grounded entirely in the qualitative findings above — not the composite number.
 
-## Notes for the interviewer
-2–4 bullets: specific topics the human interviewer should probe, derived from weakest stages.
+## Interviewer Probes
+4–6 specific behavioral interview questions, each directly derived from a weakness, inconsistency, or pattern identified in this assessment. Format each as: "[observation from evidence] → Ask: Tell me about a time when…"
 
 Hard rules:
-- Do not output JSON, code blocks, or YAML.
-- Do not include the candidate's email or any PII other than what's already in the input.
-- Keep the entire memo under 350 words.
-- If \`missing_buckets\` is non-empty, add a line under Recommendation: "Missing data: <list>".`;
+- No composite scores, stage percentages, or T-scores.
+- No invented traits, examples, or behaviours not supported by the evidence.
+- No PII beyond the role name.
+- Under 650 words total.
+- If \`missing_buckets\` is non-empty, add under Recommendation: "Missing data: <list of missing stages>."`;
 
 // ── Stage → scoring bucket map ───────────────────────────────────────────────
 const STAGE_TO_BUCKET: Record<string, string> = {
@@ -115,11 +136,32 @@ async function gatherEvidence(session_id: string, composite: Awaited<ReturnType<
   `;
   if (!meta) throw new Error('session not found');
 
-  const attempts = await sql<Array<{ stage_key: string; score: string | null; duration_s: number | null }>>`
-    SELECT stage_key::text, score, duration_s
+  // Full attempts with raw_payload (includes Q&A for Big5/SJT)
+  const attempts = await sql<Array<{
+    stage_key: string;
+    score: string | null;
+    duration_s: number | null;
+    raw_payload: unknown;
+  }>>`
+    SELECT stage_key::text, score, duration_s, raw_payload
     FROM app.stage_attempts WHERE session_id = ${session_id}::uuid
     ORDER BY stage_key, attempt_no
   `;
+
+  // Timing benchmarks: median duration per stage across all sessions
+  const stageKeys = [...new Set(attempts.map((a) => a.stage_key))];
+  const benchmarks = stageKeys.length > 0
+    ? await sql<Array<{ stage_key: string; median_s: number | null }>>`
+        SELECT stage_key::text,
+               PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY duration_s)::integer AS median_s
+        FROM app.stage_attempts
+        WHERE stage_key = ANY(${stageKeys}::app.stage_key[])
+          AND duration_s IS NOT NULL
+        GROUP BY stage_key
+      `
+    : [];
+
+  const timingBenchmarks = Object.fromEntries(benchmarks.map((b) => [b.stage_key, b.median_s]));
 
   const flags = await sql<Array<{ severity: string; reason: string }>>`
     SELECT severity::text, reason FROM app.proctoring_flags
@@ -137,6 +179,8 @@ async function gatherEvidence(session_id: string, composite: Awaited<ReturnType<
       stage_key: a.stage_key,
       score: a.score == null ? null : Number(a.score),
       duration_s: a.duration_s,
+      median_duration_s: timingBenchmarks[a.stage_key] ?? null,
+      responses: a.raw_payload,
     })),
     open_flags: flags,
     composite,
@@ -192,7 +236,7 @@ export async function POST(
     const client = new Anthropic({ apiKey });
     const msg = await client.messages.create({
       model: process.env.MEMO_MODEL ?? 'claude-sonnet-4-6-20250930',
-      max_tokens: 1024,
+      max_tokens: 1536,
       system: MEMO_PROMPT,
       messages: [{ role: 'user', content: JSON.stringify(evidence) }],
     });

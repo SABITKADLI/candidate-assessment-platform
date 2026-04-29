@@ -126,7 +126,71 @@ export async function POST(req: Request) {
     }
   });
 
+  // Post-transaction: timing flag + attention check flag (non-critical, best-effort)
+  await checkTimingAndFlags(sessionId, stage_key, duration_s ?? null, payload);
+
   return Response.json({ ok: true });
+}
+
+// Minimum expected seconds per stage type — flags below-average completions.
+const MIN_STAGE_SECONDS: Partial<Record<string, number>> = {
+  A_BIG5: 90, A_SJT: 60, A_INTEGRITY: 45,
+  A_RORSCHACH: 60, A_GMA: 30,
+  B_CODING: 90, B_DEBUG: 60, B_WORK_SAMPLE: 90, B_ASYNC_VIDEO: 30,
+};
+
+async function checkTimingAndFlags(
+  sessionId: string,
+  stage_key: string,
+  duration_s: number | null,
+  payload: unknown,
+): Promise<void> {
+  try {
+    const flags: Array<{ severity: string; reason: string; details: unknown }> = [];
+
+    // Timing: flag if below absolute minimum or below 50% of median
+    if (duration_s != null) {
+      const [bench] = await sql<{ median_s: number | null }[]>`
+        SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY duration_s)::integer AS median_s
+        FROM app.stage_attempts
+        WHERE stage_key = ${stage_key}::app.stage_key AND duration_s IS NOT NULL
+      `;
+      const median = bench?.median_s ?? null;
+      const absMin = MIN_STAGE_SECONDS[stage_key] ?? null;
+      const tooFast =
+        (absMin != null && duration_s < absMin) ||
+        (median != null && median > 30 && duration_s < median * 0.5);
+
+      if (tooFast) {
+        flags.push({
+          severity: 'medium',
+          reason: 'timing.too_fast',
+          details: { duration_s, median_s: median, min_threshold: absMin },
+        });
+      }
+    }
+
+    // Attention check failures embedded in payload
+    const attn = (payload as Record<string, unknown> | null)?.attention_check_failures;
+    if (Array.isArray(attn) && attn.length > 0) {
+      flags.push({
+        severity: 'medium',
+        reason: 'attention.check_failed',
+        details: { failures: attn, stage: stage_key },
+      });
+    }
+
+    if (flags.length === 0) return;
+
+    await sql`
+      INSERT INTO app.proctoring_flags (session_id, stage_key, severity, reason, details)
+      SELECT ${sessionId}::uuid, ${stage_key}::app.stage_key,
+             (f->>'severity')::app.flag_severity,
+             f->>'reason',
+             coalesce(f->'details', '{}'::jsonb)
+      FROM jsonb_array_elements(${sql.json(flags as never)}::jsonb) AS f
+    `;
+  } catch { /* non-critical; don't fail the stage completion */ }
 }
 
 function bad(reason: string, detail?: string) {
