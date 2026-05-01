@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button, Input } from '@cap/ui';
 
 type Stage = 'A' | 'B' | 'AB';
 type FormState = 'idle' | 'submitting' | 'done' | 'error';
+
+type RoleOption = { id: string; name: string };
 
 const STAGE_OPTIONS: { value: Stage; label: string; sub: string }[] = [
   { value: 'A',  label: 'Stage A',        sub: 'Screening only'          },
@@ -15,12 +17,22 @@ const STAGE_OPTIONS: { value: Stage; label: string; sub: string }[] = [
 export function NewSessionForm() {
   const [email, setEmail]             = useState('');
   const [stage, setStage]             = useState<Stage>('AB');
+  const [roleId, setRoleId]           = useState<string>('');
+  const [roles, setRoles]             = useState<RoleOption[]>([]);
   const [expiryHours, setExpiryHours] = useState(48);
   const [formState, setFormState]     = useState<FormState>('idle');
   const [inviteUrl, setInviteUrl]     = useState<string | null>(null);
   const [isPipeline, setIsPipeline]   = useState(false);
+  const [emailQueued, setEmailQueued] = useState(false);
   const [errorMsg, setErrorMsg]       = useState<string | null>(null);
   const [copied, setCopied]           = useState(false);
+
+  useEffect(() => {
+    fetch('/api/roles', { credentials: 'same-origin' })
+      .then((r) => r.ok ? r.json() : { roles: [] })
+      .then((d: { roles?: RoleOption[] }) => setRoles(d.roles ?? []))
+      .catch(() => {/* non-critical */});
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -31,7 +43,12 @@ export function NewSessionForm() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ email, stage, expiry_hours: expiryHours }),
+      body: JSON.stringify({
+        email,
+        stage,
+        expiry_hours: expiryHours,
+        ...(roleId ? { role_id: roleId } : {}),
+      }),
     });
 
     if (!res.ok) {
@@ -41,9 +58,10 @@ export function NewSessionForm() {
       return;
     }
 
-    const data = await res.json() as { invite_url: string; pipeline: boolean };
+    const data = await res.json() as { invite_url: string; pipeline: boolean; email_queued: boolean };
     setInviteUrl(data.invite_url);
     setIsPipeline(data.pipeline);
+    setEmailQueued(data.email_queued ?? false);
     setFormState('done');
   }
 
@@ -58,10 +76,12 @@ export function NewSessionForm() {
   function reset() {
     setEmail('');
     setStage('AB');
+    setRoleId('');
     setExpiryHours(48);
     setFormState('idle');
     setInviteUrl(null);
     setIsPipeline(false);
+    setEmailQueued(false);
     setErrorMsg(null);
     setCopied(false);
   }
@@ -69,11 +89,18 @@ export function NewSessionForm() {
   if (formState === 'done' && inviteUrl) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <p style={{ margin: 0, fontSize: 13, color: 'var(--cap-fg-2)' }}>
-          {isPipeline
-            ? 'Pipeline created. Share the Stage A link — the candidate will automatically continue to Stage B after completing it.'
-            : 'Session created. Share this link with the candidate:'}
-        </p>
+        {emailQueued ? (
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--cap-success)' }}>
+            Invite email sent to <strong>{email}</strong>.
+            {isPipeline && ' The candidate will automatically continue to Stage B after completing Stage A.'}
+          </p>
+        ) : (
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--cap-fg-2)' }}>
+            {isPipeline
+              ? 'Pipeline created. Share the Stage A link — the candidate will automatically continue to Stage B after completing it.'
+              : 'Session created. Share this link with the candidate:'}
+          </p>
+        )}
         <div style={{
           display: 'flex', gap: 8, alignItems: 'center',
           background: 'var(--cap-surface-2)', border: '1px solid var(--cap-border)',
@@ -145,6 +172,34 @@ export function NewSessionForm() {
             </label>
           ))}
         </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--cap-fg-2)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+          Role <span style={{ color: 'var(--cap-fg-3)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span>
+        </label>
+        <select
+          value={roleId}
+          onChange={(e) => setRoleId(e.target.value)}
+          style={{
+            background: 'var(--cap-surface)', border: '1px solid var(--cap-border)',
+            borderRadius: 'var(--cap-radius-md)', padding: '8px 10px',
+            color: roleId ? 'var(--cap-fg-1)' : 'var(--cap-fg-3)', fontSize: 13, cursor: 'pointer',
+          }}
+        >
+          <option value="">No role — use default stage order</option>
+          {roles.map((r) => (
+            <option key={r.id} value={r.id}>{r.name}</option>
+          ))}
+        </select>
+        {roles.length === 0 && (
+          <span style={{ fontSize: 11, color: 'var(--cap-fg-3)' }}>
+            No roles created yet.{' '}
+            <a href="/roles/new" style={{ color: 'var(--cap-accent)', textDecoration: 'none' }}>
+              Create one
+            </a>
+          </span>
+        )}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

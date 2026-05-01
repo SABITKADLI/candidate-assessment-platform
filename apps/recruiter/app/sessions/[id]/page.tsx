@@ -6,6 +6,7 @@ import { BackLink } from '@/lib/BackLink';
 import { FlagActions } from '@/lib/FlagActions';
 import { resolveFlagReason } from '@/lib/flagReasons';
 import { RescoreButton } from '@/lib/RescoreButton';
+import { getEmailLogForSession } from '@/lib/emailLog';
 import type { SessionStatus, FlagSeverity } from '@cap/shared/enums';
 
 export const dynamic = 'force-dynamic';
@@ -231,6 +232,8 @@ export default async function SessionDetailPage({
     ORDER BY resolved ASC, created_at DESC
   `;
 
+  const emailLog = await getEmailLogForSession(id).catch(() => []);
+
   const displayName = sessionRow.email ?? id.slice(0, 8) + '…';
 
   return (
@@ -420,6 +423,100 @@ export default async function SessionDetailPage({
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </Card>
+          </section>
+        )}
+
+        {/* Invite emails */}
+        {emailLog.length > 0 && (
+          <section aria-labelledby="email-heading" style={{ marginBottom: 'var(--cap-space-8)' }}>
+            <h2 id="email-heading" style={{ margin: '0 0 12px', fontSize: 'var(--cap-text-sm)', fontWeight: 500, color: 'var(--cap-fg-2)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+              Invite emails
+            </h2>
+            <Card style={{ overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr>
+                    {['To', 'Status', 'Engagement', 'Attempts', 'Resend ID', 'Error', 'Sent'].map((h) => (
+                      <th key={h} scope="col" style={TH}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {emailLog.map((e) => {
+                    const isFailed  = e.status === 'failed' || e.status === 'bounced' || e.status === 'complained';
+                    const isOk      = e.status === 'delivered';
+                    const statusColor = isOk
+                      ? 'var(--cap-success)'
+                      : isFailed
+                      ? 'var(--cap-danger)'
+                      : 'var(--cap-fg-2)';
+                    return (
+                      <tr key={e.id} className="cap-table-row">
+                        <td style={{ ...TD, fontFamily: 'var(--cap-font-mono)', fontSize: 11 }}>{e.to_email}</td>
+                        <td style={{ ...TD }}>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                            fontSize: 11, fontWeight: 600, fontFamily: 'var(--cap-font-mono)',
+                            color: statusColor,
+                          }}>
+                            {isFailed && <span aria-hidden>✕</span>}
+                            {isOk     && <span aria-hidden>✓</span>}
+                            {e.status}
+                          </span>
+                        </td>
+                        <td style={{ ...TD }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {e.opened_at ? (
+                              <span style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                fontSize: 10, fontWeight: 500, fontFamily: 'var(--cap-font-mono)',
+                                color: 'var(--cap-accent)',
+                                background: 'var(--cap-accent-surface)',
+                                border: '1px solid var(--cap-accent)',
+                                borderRadius: 4, padding: '1px 6px',
+                              }}
+                                title={`Opened ${e.opened_at.toISOString().slice(0, 16).replace('T', ' ')}`}
+                              >
+                                👁 opened · {e.opened_at.toISOString().slice(11, 16)}
+                              </span>
+                            ) : null}
+                            {e.clicked_at ? (
+                              <span style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                fontSize: 10, fontWeight: 500, fontFamily: 'var(--cap-font-mono)',
+                                color: 'var(--cap-success)',
+                                background: 'var(--cap-success-muted)',
+                                border: '1px solid var(--cap-success-border)',
+                                borderRadius: 4, padding: '1px 6px',
+                              }}
+                                title={`Clicked ${e.clicked_at.toISOString().slice(0, 16).replace('T', ' ')}`}
+                              >
+                                ↗ clicked · {e.clicked_at.toISOString().slice(11, 16)}
+                              </span>
+                            ) : null}
+                            {!e.opened_at && !e.clicked_at && (
+                              <span style={{ fontSize: 11, color: 'var(--cap-fg-3)', fontFamily: 'var(--cap-font-mono)' }}>—</span>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ ...TD, fontFamily: 'var(--cap-font-mono)', fontSize: 11, color: 'var(--cap-fg-3)' }}>
+                          {e.attempts}
+                        </td>
+                        <td style={{ ...TD, fontFamily: 'var(--cap-font-mono)', fontSize: 11, color: 'var(--cap-fg-3)', maxWidth: 220, wordBreak: 'break-all' }}>
+                          {e.resend_id ?? '—'}
+                        </td>
+                        <td style={{ ...TD, fontFamily: 'var(--cap-font-mono)', fontSize: 11, color: 'var(--cap-danger)', maxWidth: 260 }}>
+                          {e.last_error ?? '—'}
+                        </td>
+                        <td style={{ ...TD, fontFamily: 'var(--cap-font-mono)', fontSize: 11, color: 'var(--cap-fg-3)', whiteSpace: 'nowrap' }}>
+                          {e.created_at.toISOString().slice(0, 16).replace('T', ' ')}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </Card>

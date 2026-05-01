@@ -62,6 +62,8 @@ const worker = new Worker<JobData>(
       network: 'none',
     });
 
+    const sandboxScore = computeSandboxScore(outcome.result, outcome.oom_killed);
+
     // Persist: keep raw result blob on stage_attempts for forensics; update timing.
     await sql`
       UPDATE app.stage_attempts
@@ -77,7 +79,8 @@ const worker = new Worker<JobData>(
              error: outcome.result.error ?? null,
            },
          } as never)},
-             duration_s = ${Math.round(outcome.wall_ms / 1000)},
+             score        = ${sandboxScore},
+             duration_s   = ${Math.round(outcome.wall_ms / 1000)},
              completed_at = now()
        WHERE id = ${stage_attempt_id}::uuid
     `;
@@ -127,4 +130,12 @@ function requireEnv(k: string): string {
   const v = process.env[k];
   if (!v) throw new Error(`${k} not set`);
   return v;
+}
+
+function computeSandboxScore(result: import('./protocol.js').RunResult, oomKilled: boolean): number {
+  if (oomKilled || result.timed_out) return 0;
+  if (result.tests && result.tests.total > 0) {
+    return Math.round((result.tests.passed / result.tests.total) * 100 * 1000) / 1000;
+  }
+  return result.exit_code === 0 ? 100 : 0;
 }

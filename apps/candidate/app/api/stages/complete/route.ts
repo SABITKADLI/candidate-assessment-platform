@@ -8,27 +8,25 @@ import { z } from 'zod';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// Body schema: clients post a minimal payload. `score` is optional; some
-// stages are scored asynchronously (Big5 is just answers; the scoring worker
-// doesn't know what to do with them yet — that's fine, a later phase adds
-// per-stage scorers that update stage_attempts.score directly).
 const zBody = z.object({
   stage_key: zStageKey,
-  // Stage-local results — persisted on the attempt for forensics.
   payload: z.record(z.string(), z.unknown()).default({}),
-  // Optional pre-computed score for self-scorable stages (GMA, SJT).
   score: z.number().min(0).max(100).optional(),
   duration_s: z.number().int().min(0).optional(),
 });
 
-// Ordered list of Stage A + B keys used to decide "is this the last stage?".
-// Keep in lockstep with the pipeline design (see Project_information_).
-const STAGE_A_ORDER: StageKey[] = [
+// Stages that are binary pass/fail — completing them earns full credit.
+const PRESENCE_SCORES: Partial<Record<StageKey, number>> = {
+  A_RESUME: 100,
+  A_ID_LIVENESS: 100,
+};
+
+const DEFAULT_STAGE_A: StageKey[] = [
   'A_RESUME', 'A_ID_LIVENESS', 'A_GMA',
   'A_BIG5', 'A_MBTI', 'A_RORSCHACH',
   'A_INTEGRITY', 'A_SJT',
 ];
-const STAGE_B_ORDER: StageKey[] = [
+const DEFAULT_STAGE_B: StageKey[] = [
   'B_CODING', 'B_DEBUG', 'B_WORK_SAMPLE',
   'B_ASYNC_VIDEO', 'B_VERBAL',
 ];
@@ -41,18 +39,23 @@ export async function POST(req: Request) {
   try { body = await req.json(); } catch { return bad('bad_json'); }
   const parsed = zBody.safeParse(body);
   if (!parsed.success) return bad('bad_shape', parsed.error.message);
-  const { stage_key, payload, score, duration_s } = parsed.data;
+  const { stage_key, payload, duration_s } = parsed.data;
+  // Presence stages earn 100 automatically; caller score takes precedence for self-scored stages.
+  const score = parsed.data.score ?? PRESENCE_SCORES[stage_key] ?? undefined;
 
   const jar = await cookies();
   const sessionId = jar.get('cap_sess')?.value;
   if (!sessionId) return unauthorized();
 
-  // Authorize: the cookie must actually map to an in-progress session whose
-  // stage group matches the stage_key being completed.
-  const [session] = await sql<Array<{ id: string; stage: StageGroup; status: string }>>`
-    SELECT id, stage, status::text
-    FROM app.sessions
-    WHERE id = ${sessionId}::uuid
+  const [session] = await sql<Array<{
+    id: string; stage: StageGroup; status: string;
+    stages_a: string[] | null; stages_b: string[] | null;
+  }>>`
+    SELECT s.id, s.stage, s.status::text,
+           r.stages_a, r.stages_b
+    FROM app.sessions s
+    LEFT JOIN app.roles r ON r.id = s.role_id
+    WHERE s.id = ${sessionId}::uuid
     LIMIT 1
   `;
   if (!session) return unauthorized();
@@ -64,8 +67,11 @@ export async function POST(req: Request) {
     return bad('session_closed', `session is ${session.status}`);
   }
 
-  // Upsert the attempt. We allow re-posting to the same stage while in
-  // progress (e.g. client retry); attempt_no stays 1 until a stage reopens.
+  // Use role-specific stage list (if set) or fall back to defaults.
+  const order: StageKey[] = session.stage === 'A'
+    ? ((session.stages_a ?? DEFAULT_STAGE_A) as StageKey[])
+    : ((session.stages_b ?? DEFAULT_STAGE_B) as StageKey[]);
+
   await sql.begin(async (tx) => {
     await tx`
       INSERT INTO app.stage_attempts (
@@ -84,9 +90,6 @@ export async function POST(req: Request) {
             started_at   = COALESCE(app.stage_attempts.started_at, EXCLUDED.started_at)
     `;
 
-    // Detect stage-group completion: every stage in the current group has an
-    // attempt with completed_at not null.
-    const order = session.stage === 'A' ? STAGE_A_ORDER : STAGE_B_ORDER;
     const rows = await tx<{ done: boolean }[]>`
       SELECT (
         SELECT count(*) FROM app.stage_attempts

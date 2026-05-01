@@ -7,9 +7,7 @@ import { turnstileEnabled } from '@/lib/turnstile';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// Stage order per group. Router picks the first stage without a completed
-// attempt; if all done, we send back to '/'.
-const ORDER: Record<StageGroup, StageKey[]> = {
+const DEFAULT_ORDER: Record<StageGroup, StageKey[]> = {
   A: ['A_RESUME','A_ID_LIVENESS','A_GMA','A_BIG5','A_MBTI','A_RORSCHACH','A_INTEGRITY','A_SJT'],
   B: ['B_CODING','B_DEBUG','B_WORK_SAMPLE','B_ASYNC_VIDEO','B_VERBAL'],
 };
@@ -35,6 +33,8 @@ type SessionRow = {
   stage: StageGroup;
   status: SessionStatus;
   expires_at: Date;
+  stages_a: string[] | null;
+  stages_b: string[] | null;
 };
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ token: string }> }) {
@@ -43,9 +43,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
   if (!parsed.success) return redirect(req, '/?reason=bad_token');
 
   const rows = await sql<SessionRow[]>`
-    SELECT id, stage, status, expires_at
-    FROM app.sessions
-    WHERE resume_token = ${token}
+    SELECT s.id, s.stage, s.status, s.expires_at,
+           r.stages_a, r.stages_b
+    FROM app.sessions s
+    LEFT JOIN app.roles r ON r.id = s.role_id
+    WHERE s.resume_token = ${token}
     LIMIT 1
   `;
   const session = rows[0];
@@ -62,13 +64,18 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
     return NextResponse.redirect(new URL(`/s/${token}/challenge`, req.url));
   }
 
+  // Use role-specific stage order when set; otherwise fall back to defaults.
+  const stageOrder: StageKey[] = session.stage === 'A'
+    ? ((session.stages_a ?? DEFAULT_ORDER.A) as StageKey[])
+    : ((session.stages_b ?? DEFAULT_ORDER.B) as StageKey[]);
+
   // Find next unfinished stage.
   const done = await sql<{ stage_key: StageKey }[]>`
     SELECT stage_key FROM app.stage_attempts
     WHERE session_id = ${session.id}::uuid AND completed_at IS NOT NULL
   `;
   const doneSet = new Set(done.map((d) => d.stage_key));
-  const next = ORDER[session.stage].find((k) => !doneSet.has(k));
+  const next = stageOrder.find((k) => !doneSet.has(k));
 
   const dest = next && STAGE_ROUTES[next]
     ? `/s/${token}/${STAGE_ROUTES[next]}`

@@ -3,7 +3,9 @@ import { auth0, auth0Configured } from '@/lib/auth0';
 import { sql } from '@cap/db';
 import { Sidebar, StatusBadge, Button, Card } from '@cap/ui';
 import type { SessionStatus, StageGroup } from '@cap/shared/enums';
-import { ExternalLink, Plus } from 'lucide-react';
+import { ExternalLink, Plus, MailCheck, MailX, Mail, Eye, MousePointer } from 'lucide-react';
+import { getEmailStatusesForSessions } from '@/lib/emailLog';
+import type { EmailStatus, EmailSummary } from '@/lib/emailLog';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +18,67 @@ type SessionRow = {
   created_at: Date;
   expires_at: Date;
 };
+
+function EmailBadge({ summary, sessionId }: { summary: EmailSummary | undefined; sessionId: string }) {
+  if (!summary) {
+    return <span style={{ fontSize: 11, color: 'var(--cap-fg-3)', fontFamily: 'var(--cap-font-mono)' }}>—</span>;
+  }
+
+  const { status, opened, clicked } = summary;
+  const statusCfg: Record<EmailStatus, { icon: React.ReactNode; color: string; label: string }> = {
+    queued:    { icon: <Mail      size={12} strokeWidth={2} />, color: 'var(--cap-fg-3)',    label: 'queued'    },
+    sending:   { icon: <Mail      size={12} strokeWidth={2} />, color: 'var(--cap-accent)',  label: 'sending'   },
+    delivered: { icon: <MailCheck size={12} strokeWidth={2} />, color: 'var(--cap-success)', label: 'delivered' },
+    bounced:   { icon: <MailX     size={12} strokeWidth={2} />, color: 'var(--cap-danger)',  label: 'bounced'   },
+    complained:{ icon: <MailX     size={12} strokeWidth={2} />, color: 'var(--cap-danger)',  label: 'complaint' },
+    failed:    { icon: <MailX     size={12} strokeWidth={2} />, color: 'var(--cap-danger)',  label: 'failed'    },
+  };
+  const c = statusCfg[status] ?? statusCfg.queued;
+
+  return (
+    <a
+      href={`/sessions/${sessionId}#email-heading`}
+      title={`Email: ${status}${opened ? ' · opened' : ''}${clicked ? ' · clicked' : ''}`}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
+    >
+      {/* delivery status */}
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        fontSize: 11, fontWeight: 500, fontFamily: 'var(--cap-font-mono)', color: c.color,
+      }}>
+        {c.icon}
+        {c.label}
+      </span>
+      {/* engagement flags */}
+      {opened && (
+        <span title="Opened" style={{
+          display: 'inline-flex', alignItems: 'center', gap: 3,
+          fontSize: 10, fontWeight: 500, fontFamily: 'var(--cap-font-mono)',
+          color: 'var(--cap-accent)',
+          background: 'var(--cap-accent-surface)',
+          border: '1px solid var(--cap-accent)',
+          borderRadius: 4, padding: '1px 5px',
+        }}>
+          <Eye size={10} strokeWidth={2} aria-hidden />
+          opened
+        </span>
+      )}
+      {clicked && (
+        <span title="Clicked link" style={{
+          display: 'inline-flex', alignItems: 'center', gap: 3,
+          fontSize: 10, fontWeight: 500, fontFamily: 'var(--cap-font-mono)',
+          color: 'var(--cap-success)',
+          background: 'var(--cap-success-muted)',
+          border: '1px solid var(--cap-success-border)',
+          borderRadius: 4, padding: '1px 5px',
+        }}>
+          <MousePointer size={10} strokeWidth={2} aria-hidden />
+          clicked
+        </span>
+      )}
+    </a>
+  );
+}
 
 function EmptyState() {
   return (
@@ -82,6 +145,7 @@ export default async function SessionsPage() {
     LIMIT 100
   `;
 
+  const emailStatuses = await getEmailStatusesForSessions(sessions.map((s) => s.id));
   const base = process.env.NEXT_PUBLIC_CANDIDATE_BASE_URL ?? 'http://localhost:3000';
   const now = new Date();
 
@@ -132,7 +196,7 @@ export default async function SessionsPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr>
-                    {['Candidate', 'Stage', 'Status', 'Created'].map((h) => (
+                    {['Candidate', 'Stage', 'Status', 'Email', 'Created'].map((h) => (
                       <th key={h} scope="col" style={TH_STYLE}>{h}</th>
                     ))}
                     <th scope="col" style={TH_STYLE} className="cap-table-hide-mobile">Expires</th>
@@ -142,6 +206,7 @@ export default async function SessionsPage() {
                 <tbody>
                   {sessions.map((s) => {
                     const expired = s.expires_at < now;
+                    const emailSummary = emailStatuses[s.id];
                     return (
                       <tr key={s.id} className="cap-table-row">
                         <td style={{
@@ -169,6 +234,9 @@ export default async function SessionsPage() {
                         </td>
                         <td style={{ padding: '11px 14px' }}>
                           <StatusBadge status={s.status} />
+                        </td>
+                        <td style={{ padding: '11px 14px' }}>
+                          <EmailBadge summary={emailSummary} sessionId={s.id} />
                         </td>
                         <td style={{
                           padding: '11px 14px',

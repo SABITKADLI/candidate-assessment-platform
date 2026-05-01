@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { sql, auditLog } from '@cap/db';
 import { computeComposite } from './composite.js';
 import { generateMemo } from './memo.js';
+import { scoreUnscored } from './stageScorers.js';
 import { enqueueAts, type AtsProvider } from './ats.js';
 import { startOutboxLoop } from './outbox.js';
 
@@ -35,6 +36,9 @@ const worker = new Worker<JobData>(
   async (job: Job) => {
     const { session_id, reason, ats } = zJob.parse(job.data);
     const t0 = Date.now();
+
+    // Score any stages that weren't auto-scored at completion time.
+    await scoreUnscored(session_id);
 
     const composite = await computeComposite({ session_id });
     log.info({ session_id, composite: composite.composite, reason }, 'composite.done');
