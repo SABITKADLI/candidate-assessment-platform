@@ -3,7 +3,24 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "env": [
+        "DATABASE_URL",
+        "AUTH0_SECRET",
+        "AUTH0_DOMAIN",
+        "AUTH0_CLIENT_ID",
+        "AUTH0_CLIENT_SECRET",
+        "APP_BASE_URL",
+        "AUTH0_ISSUER",
+        "AUTH0_AUDIENCE",
+        "RESEND_API_KEY",
+        "EMAIL_FROM",
+        "RESEND_WEBHOOK_SECRET",
+        "REDIS_URL",
+        "LOG_LEVEL",
+        "ANTHROPIC_API_KEY",
+        "NEXT_PUBLIC_CANDIDATE_BASE_URL"
+      ]
     },
     "dev": {
       "cache": false,
