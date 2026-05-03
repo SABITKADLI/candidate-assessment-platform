@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     const inviteUrl = `${base}/s/${rowA.resume_token}`;
 
     if (send_email) {
-      sendInviteEmail({ to: email, inviteUrl, stage: 'AB', expiresAt, roleName, sessionId: rowA.session_id }).catch(
+      await sendInviteEmail({ to: email, inviteUrl, stage: 'AB', expiresAt, roleName, sessionId: rowA.session_id }).catch(
         (e) => console.error('[sessions/create] email failed:', e),
       );
     }
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
   const inviteUrl = `${base}/s/${row.resume_token}`;
 
   if (send_email) {
-    sendInviteEmail({ to: email, inviteUrl, stage, expiresAt, roleName, sessionId: row.session_id }).catch(
+    await sendInviteEmail({ to: email, inviteUrl, stage, expiresAt, roleName, sessionId: row.session_id }).catch(
       (e) => console.error('[sessions/create] email failed:', e),
     );
   }
