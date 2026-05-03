@@ -7,6 +7,7 @@ import { FlagActions } from '@/lib/FlagActions';
 import { resolveFlagReason } from '@/lib/flagReasons';
 import { RescoreButton } from '@/lib/RescoreButton';
 import { getEmailLogForSession } from '@/lib/emailLog';
+import { ResendEmailButton } from '@/lib/ResendEmailButton';
 import type { SessionStatus, FlagSeverity } from '@cap/shared/enums';
 
 export const dynamic = 'force-dynamic';
@@ -430,12 +431,20 @@ export default async function SessionDetailPage({
         )}
 
         {/* Invite emails */}
-        {emailLog.length > 0 && (
+        {(emailLog.length > 0 || sessionRow.email) && (
           <section aria-labelledby="email-heading" style={{ marginBottom: 'var(--cap-space-8)' }}>
-            <h2 id="email-heading" style={{ margin: '0 0 12px', fontSize: 'var(--cap-text-sm)', fontWeight: 500, color: 'var(--cap-fg-2)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-              Invite emails
-            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h2 id="email-heading" style={{ margin: 0, fontSize: 'var(--cap-text-sm)', fontWeight: 500, color: 'var(--cap-fg-2)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                Invite emails
+              </h2>
+              <ResendEmailButton sessionId={sessionRow.id} />
+            </div>
             <Card style={{ overflow: 'hidden' }}>
+              {emailLog.length === 0 ? (
+                <p style={{ margin: 0, padding: '16px 20px', fontSize: 13, color: 'var(--cap-fg-3)' }}>
+                  No emails sent yet. Use the button above to send the invite.
+                </p>
+              ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr>
@@ -519,6 +528,7 @@ export default async function SessionDetailPage({
                   })}
                 </tbody>
               </table>
+              )}
             </Card>
           </section>
         )}
