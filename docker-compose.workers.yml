@@ -1,0 +1,35 @@
+# Production worker stack.
+#
+# Usage on a worker host/VPS:
+#   cp workers.env.example workers.env
+#   # edit workers.env with production secrets
+#   docker compose -f docker-compose.workers.yml --profile scoring up -d --build
+#   docker compose -f docker-compose.workers.yml --profile sandbox up -d --build
+#
+# The sandbox worker requires Docker socket access because it starts one
+# isolated container per candidate code run.
+
+services:
+  scoring-worker:
+    profiles: ["scoring", "all"]
+    build:
+      context: .
+      dockerfile: apps/scoring-worker/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - workers.env
+    environment:
+      NODE_ENV: production
+
+  sandbox-worker:
+    profiles: ["sandbox", "all"]
+    build:
+      context: .
+      dockerfile: apps/sandbox-worker/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - workers.env
+    environment:
+      NODE_ENV: production
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock

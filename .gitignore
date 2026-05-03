@@ -9,6 +9,7 @@ coverage/
 .env
 .env.*
 !.env.example
+workers.env
 
 # editors
 .vscode/
@@ -38,3 +39,5 @@ pgdata/
 impeccable-*.html
 impeccable-*.md
 CLAUDE.md
+
+.vercel
