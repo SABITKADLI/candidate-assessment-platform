@@ -3,5 +3,8 @@
 **/.turbo
 **/dist
 **/*.tsbuildinfo
+.env
+.env.*
+workers.env
 .git
 .uploads

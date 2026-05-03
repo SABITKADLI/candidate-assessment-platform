@@ -214,7 +214,7 @@ Flags lower the composite via `proctoring_mult` (floor 0.5×). Recruiters resolv
 | `REDIS_URL` | Yes | BullMQ queues |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | No | Turnstile widget |
 | `TURNSTILE_SECRET_KEY` | No | Turnstile server verify |
-| `S3_BUCKET` / `S3_REGION` / `AWS_*` | No | Resume + artifact storage |
+| `S3_BUCKET` / `AWS_REGION` / `AWS_*` | No | Resume + artifact storage |
 | `NEXT_PUBLIC_CANDIDATE_BASE_URL` | No | Base URL for invite links |
 
 ### `apps/recruiter`
@@ -234,7 +234,7 @@ Flags lower the composite via `proctoring_mult` (floor 0.5×). Recruiters resolv
 | `DATABASE_URL` | Yes | PostgreSQL |
 | `REDIS_URL` | Yes | BullMQ |
 | `ANTHROPIC_API_KEY` | No | Claude memo generation |
-| `S3_BUCKET` / `S3_REGION` / `AWS_*` | No | Memo upload |
+| `S3_BUCKET` / `AWS_REGION` / `AWS_*` | No | Memo upload |
 | `ATS_GREENHOUSE_URL` + `ATS_GREENHOUSE_SECRET` | No | Greenhouse webhook |
 | `ATS_LEVER_URL` + `ATS_LEVER_SECRET` | No | Lever webhook |
 | `ATS_WORKDAY_URL` + `ATS_WORKDAY_SECRET` | No | Workday webhook |
@@ -326,6 +326,77 @@ cd apps/mcp-server     && pnpm start
 
 ---
 
+## Production Workers
+
+The web apps run on Vercel, but the BullMQ workers must run as long-lived
+processes on a worker host. The sandbox worker also needs Docker access because
+it starts one isolated container per candidate code run.
+
+Use `workers.env` for the worker host. It is ignored by git and by Docker build
+contexts. Start from `workers.env.example`, then fill production values:
+
+```bash
+cp workers.env.example workers.env
+```
+
+Required shared values:
+
+```env
+DATABASE_URL=postgresql://...        # production Neon/Postgres URL
+REDIS_URL=rediss://...               # same Vercel Redis used by the candidate app
+AWS_REGION=eu-north-1
+S3_BUCKET=cap-assessment-prod-sabitkadli
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+```
+
+Scoring worker values:
+
+```env
+SCORING_QUEUE=scoring-runs
+SCORING_CONCURRENCY=2
+ANTHROPIC_API_KEY=...
+MEMO_MODEL=claude-sonnet-4-6-20250930
+```
+
+Sandbox worker values:
+
+```env
+SANDBOX_QUEUE=sandbox-runs
+SANDBOX_IMAGE=cap/sandbox:latest
+SANDBOX_RUNTIME=runc                 # use runsc only on hosts with gVisor installed
+SANDBOX_CONCURRENCY=1
+```
+
+Build and run:
+
+```bash
+docker compose -f docker-compose.workers.yml --profile all config --quiet
+docker compose -f docker-compose.workers.yml --profile all build
+
+# Build the candidate-code runner image used by sandbox jobs.
+bash apps/sandbox-worker/scripts/build-image.sh
+
+# Start one or both workers.
+docker compose -f docker-compose.workers.yml --profile scoring up -d
+docker compose -f docker-compose.workers.yml --profile sandbox up -d
+
+docker compose -f docker-compose.workers.yml --profile all ps
+docker compose -f docker-compose.workers.yml --profile all logs -f
+```
+
+On Windows PowerShell, build the candidate-code runner image with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File apps/sandbox-worker/scripts/build-image.ps1
+```
+
+Do not run these workers on Vercel serverless. For production, run them on an
+always-on VPS or worker platform with Docker support. Queue names are fixed in
+`packages/shared/src/queues.ts`: `scoring-runs` and `sandbox-runs`.
+
+---
+
 ## Database Schema (key tables)
 
 ```
@@ -355,6 +426,8 @@ audit.audit_log         seq, actor, action, target, payload, prev_hash, hash  (t
 - [x] Session token system — opaque `tok_` tokens, httpOnly cookie
 - [x] Rate limiting on all candidate API routes
 - [x] Cloudflare Turnstile bot gate
+- [x] Production worker Dockerfiles and `docker-compose.workers.yml`
+- [x] Worker env template (`workers.env.example`) and secret-safe Docker ignore rules
 
 #### Candidate app
 - [x] Middleware session routing (resume token → next stage)
@@ -438,9 +511,8 @@ audit.audit_log         seq, actor, action, target, payload, prev_hash, hash  (t
 
 #### Infrastructure
 - [ ] **Database migrations** — schema changes are handled via `ensureXXXSchema()` runtime guards (`ALTER TABLE IF NOT EXISTS`). No formal migration system (Drizzle, Flyway, etc.). Not safe for production schema evolution.
-- [ ] **Dockerfiles** — no production container definitions for any app or worker.
+- [ ] **Always-on worker host** — worker containers build and boot locally, but production still needs a VPS/worker host running `docker-compose.workers.yml` continuously.
 - [ ] **CI/CD pipeline** — no GitHub Actions or automated lint/build/test on push.
-- [ ] **`.env.example` files** — no example env files; required variables must be inferred from source.
 - [ ] **S3 presign endpoint** — MCP server delegates to `S3_PRESIGN_URL` but that endpoint is not implemented in the recruiter app.
 
 #### Testing

@@ -95,7 +95,7 @@ The worker code is identical across 1/3; Fargate (option 2) requires setting
 
 ```
 SANDBOX_IMAGE=cap/sandbox:latest
-SANDBOX_RUNTIME=runsc                 # or runc (Fargate MVP)
+SANDBOX_RUNTIME=runc                  # use runsc only on hosts with gVisor installed
 SANDBOX_SECCOMP_PATH=/etc/cap/seccomp.json
 REDIS_URL=redis://127.0.0.1:6379
 SANDBOX_QUEUE=sandbox-runs
@@ -109,6 +109,40 @@ DATABASE_URL=postgres://...
 cd apps/sandbox-worker
 IMAGE=cap/sandbox:latest ./scripts/build-image.sh
 ```
+
+On Windows PowerShell from the repo root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File apps/sandbox-worker/scripts/build-image.ps1
+```
+
+## Production Docker
+
+The sandbox worker must run on a host with Docker access. It starts one
+short-lived container per candidate code run, using `SANDBOX_IMAGE`.
+
+From the repo root on the worker host:
+
+```bash
+cp workers.env.example workers.env
+# fill DATABASE_URL, REDIS_URL, SANDBOX_* values
+
+bash apps/sandbox-worker/scripts/build-image.sh
+docker compose -f docker-compose.workers.yml --profile sandbox up -d --build
+docker compose -f docker-compose.workers.yml --profile sandbox logs -f
+```
+
+On Windows PowerShell, use the PowerShell image helper instead of the bash
+script:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File apps/sandbox-worker/scripts/build-image.ps1
+```
+
+Use `SANDBOX_RUNTIME=runc` for a normal Docker host. Switch to `runsc` only
+after installing gVisor on the host and confirming `docker run --runtime runsc`
+works. `SANDBOX_SECCOMP_PATH` is optional; set it only to an absolute path that
+exists on the worker host.
 
 ## Limits worth knowing
 

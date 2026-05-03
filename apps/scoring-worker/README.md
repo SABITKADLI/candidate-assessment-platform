@@ -64,8 +64,10 @@ REDIS_URL=redis://...
 # Memo (optional)
 ANTHROPIC_API_KEY=...
 MEMO_MODEL=claude-sonnet-4-6-20250930
-AWS_REGION=us-east-1
-S3_BUCKET=cap-memos
+AWS_REGION=eu-north-1
+S3_BUCKET=cap-assessment-prod-sabitkadli
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
 
 # ATS (per-provider, optional)
 ATS_GREENHOUSE_URL=
@@ -75,6 +77,32 @@ ATS_LEVER_SECRET=
 ATS_WORKDAY_URL=
 ATS_WORKDAY_SECRET=
 ```
+
+For the current production bucket in Stockholm, use:
+
+```
+AWS_REGION=eu-north-1
+S3_BUCKET=cap-assessment-prod-sabitkadli
+```
+
+## Production Docker
+
+The scoring worker is a long-running BullMQ consumer. It should run on a worker
+host, not as a Vercel serverless function.
+
+From the repo root on the worker host:
+
+```bash
+cp workers.env.example workers.env
+# fill DATABASE_URL, REDIS_URL, ANTHROPIC_API_KEY, AWS_* and S3_BUCKET
+
+docker compose -f docker-compose.workers.yml --profile scoring up -d --build
+docker compose -f docker-compose.workers.yml --profile scoring logs -f
+```
+
+The worker consumes `scoring-runs`. It is safe to run more than one replica for
+throughput, but keep `SCORING_CONCURRENCY` modest until database and Claude API
+limits are known.
 
 ## Triggering a scoring job
 
