@@ -3,6 +3,7 @@ import { sql, auditLog } from '@cap/db';
 import { zStageKey, STAGE_GROUP_OF, type StageGroup, type StageKey } from '@cap/shared';
 import { enqueueScoring } from '@/lib/queues';
 import { rateLimit } from '@/lib/rate-limit';
+import { StageScoringError, scoreStageOnServer } from '@/lib/server-stage-scoring';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -11,6 +12,8 @@ export const runtime = 'nodejs';
 const zBody = z.object({
   stage_key: zStageKey,
   payload: z.record(z.string(), z.unknown()).default({}),
+  // Backward-compatible only: public callers may send this, but server-side
+  // scoring below is authoritative for all self-scored stages.
   score: z.number().min(0).max(100).optional(),
   duration_s: z.number().int().min(0).optional(),
 });
@@ -40,8 +43,6 @@ export async function POST(req: Request) {
   const parsed = zBody.safeParse(body);
   if (!parsed.success) return bad('bad_shape', parsed.error.message);
   const { stage_key, payload, duration_s } = parsed.data;
-  // Presence stages earn 100 automatically; caller score takes precedence for self-scored stages.
-  const score = parsed.data.score ?? PRESENCE_SCORES[stage_key] ?? undefined;
 
   const jar = await cookies();
   const sessionId = jar.get('cap_sess')?.value;
@@ -72,6 +73,16 @@ export async function POST(req: Request) {
     ? ((session.stages_a ?? DEFAULT_STAGE_A) as StageKey[])
     : ((session.stages_b ?? DEFAULT_STAGE_B) as StageKey[]);
 
+  let scored: { score?: number; payload: Record<string, unknown> };
+  try {
+    scored = scoreStageOnServer(stage_key, payload);
+  } catch (err) {
+    if (err instanceof StageScoringError) return bad(err.reason, err.message);
+    throw err;
+  }
+  const finalPayload = scored.payload;
+  const score = scored.score ?? PRESENCE_SCORES[stage_key] ?? undefined;
+
   await sql.begin(async (tx) => {
     await tx`
       INSERT INTO app.stage_attempts (
@@ -79,7 +90,7 @@ export async function POST(req: Request) {
         duration_s, started_at, completed_at
       ) VALUES (
         ${sessionId}::uuid, ${stage_key}::app.stage_key, 1,
-        ${score ?? null}, ${tx.json(payload as never)},
+        ${score ?? null}, ${tx.json(finalPayload as never)},
         ${duration_s ?? null}, now(), now()
       )
       ON CONFLICT (session_id, stage_key, attempt_no) DO UPDATE
@@ -130,7 +141,7 @@ export async function POST(req: Request) {
   });
 
   // Post-transaction: timing flag + attention check flag (non-critical, best-effort)
-  await checkTimingAndFlags(sessionId, stage_key, duration_s ?? null, payload);
+  await checkTimingAndFlags(sessionId, stage_key, duration_s ?? null, finalPayload);
 
   return Response.json({ ok: true });
 }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@cap/ui';
-import { INTEGRITY_ITEMS, LIKERT, scoreIntegrity, type LikertVal } from './integrity-items';
+import { INTEGRITY_ITEMS, LIKERT, type LikertVal } from './integrity-items';
 
 const PAGE_SIZE = 8;
 const TOTAL_PAGES = Math.ceil(INTEGRITY_ITEMS.length / PAGE_SIZE);
@@ -24,12 +24,11 @@ export function IntegrityPlayer() {
   async function finish() {
     if (!pageAnswered) return;
     setPhase('submitting');
-    const score = scoreIntegrity(answers);
     const res = await fetch('/api/stages/complete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ stage_key: 'A_INTEGRITY', payload: { answers }, score }),
+      body: JSON.stringify({ stage_key: 'A_INTEGRITY', payload: { answers } }),
     });
     if (!res.ok) {
       const j = await res.json().catch(() => ({})) as { error?: string };

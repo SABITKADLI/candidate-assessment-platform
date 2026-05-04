@@ -2,8 +2,8 @@ import { sql } from '@cap/db';
 import { completeStage } from './stage-complete';
 
 // --- Config ---------------------------------------------------------------
-export const GMA_N_ITEMS = 10;                    // MVP; 50 in prod
-export const GMA_DURATION_MS = 12 * 60 * 1000;    // 12 minutes
+export const GMA_N_ITEMS = 20;                    // sampled from the 50-item production bank
+export const GMA_DURATION_MS = 20 * 60 * 1000;    // 20 minutes
 
 // --- Progress shape (persisted on stage_attempts.raw_payload.gma) ---------
 export interface GmaProgress {

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { Button } from '@cap/ui';
-import { SJT_SCENARIOS, scoreSjt, type SjtOptionKey } from './sjt-items';
+import { SJT_SCENARIOS, type SjtOptionKey } from './sjt-items';
 
 type Phase = 'questions' | 'submitting' | 'done' | 'error';
 
@@ -22,26 +22,6 @@ export function SjtPlayer() {
   async function finish(finalAnswers: Record<string, SjtOptionKey>) {
     setPhase('submitting');
     const duration_s = Math.round((Date.now() - startTimeRef.current) / 1000);
-    const score = scoreSjt(finalAnswers);
-
-    // Build enriched items with scenario text and chosen option text for memo
-    const items = SJT_SCENARIOS.map((s) => {
-      const chosenKey = finalAnswers[s.id];
-      const chosenOpt = s.options.find((o) => o.key === chosenKey);
-      return {
-        id: s.id,
-        situation: s.situation,
-        chosen_key: chosenKey ?? null,
-        chosen_text: chosenOpt?.text ?? null,
-        item_score: chosenOpt?.score ?? null,
-        isAttentionCheck: s.isAttentionCheck ?? false,
-      };
-    });
-
-    // Detect attention check failures
-    const attentionCheckFailures = SJT_SCENARIOS
-      .filter((s) => s.isAttentionCheck && s.correctKey && finalAnswers[s.id] !== s.correctKey)
-      .map((s) => ({ id: s.id, expected: s.correctKey, got: finalAnswers[s.id] ?? null }));
 
     const res = await fetch('/api/stages/complete', {
       method: 'POST',
@@ -49,8 +29,7 @@ export function SjtPlayer() {
       credentials: 'same-origin',
       body: JSON.stringify({
         stage_key: 'A_SJT',
-        payload: { items, answers: finalAnswers, attention_check_failures: attentionCheckFailures },
-        score,
+        payload: { answers: finalAnswers },
         duration_s,
       }),
     });

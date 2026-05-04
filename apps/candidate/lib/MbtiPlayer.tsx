@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@cap/ui';
-import { MBTI_ITEMS, scoreMbti } from './mbti-items';
+import { MBTI_ITEMS } from './mbti-items';
 
 const PAGE_SIZE = 10;
 const TOTAL_PAGES = Math.ceil(MBTI_ITEMS.length / PAGE_SIZE);
@@ -25,22 +25,13 @@ export function MbtiPlayer() {
     if (!pageAnswered) return;
     setPhase('submitting');
 
-    const { type, scores } = scoreMbti(answers);
-    // Clarity score: average decisiveness across all 4 dimensions (0=split, 100=all one way).
-    const clarityScore = Math.round(
-      Object.values(scores).reduce((sum, { a, b }) => {
-        const total = a + b || 1;
-        return sum + (Math.abs(a - b) / total) * 100;
-      }, 0) / 4
-    );
     const res = await fetch('/api/stages/complete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
       body: JSON.stringify({
         stage_key: 'A_MBTI',
-        payload: { answers, type, scores },
-        score: clarityScore,
+        payload: { answers },
       }),
     });
 

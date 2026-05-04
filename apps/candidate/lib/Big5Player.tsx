@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { Button } from '@cap/ui';
-import { BIG5_ITEMS, LIKERT_LABELS, scoreBig5, type LikertValue } from './big5-items';
+import { BIG5_ITEMS, LIKERT_LABELS, type LikertValue } from './big5-items';
 
 const PAGE_SIZE = 10;
 const TOTAL_PAGES = Math.ceil(BIG5_ITEMS.length / PAGE_SIZE);
@@ -31,22 +31,6 @@ export function Big5Player() {
     setPhase('submitting');
 
     const duration_s = Math.round((Date.now() - startTimeRef.current) / 1000);
-    const scores = scoreBig5(answers);
-
-    // Build enriched items array with question text for memo evaluation
-    const items = BIG5_ITEMS.map((item) => ({
-      id: item.id,
-      text: item.text,
-      factor: item.factor,
-      keyed: item.keyed,
-      answer: answers[item.id] ?? null,
-      isCheck: item.isCheck ?? false,
-    }));
-
-    // Detect attention check failures
-    const attentionCheckFailures = BIG5_ITEMS
-      .filter((item) => item.isCheck && answers[item.id] !== item.checkValue)
-      .map((item) => ({ id: item.id, expected: item.checkValue, got: answers[item.id] ?? null }));
 
     const res = await fetch('/api/stages/complete', {
       method: 'POST',
@@ -54,8 +38,7 @@ export function Big5Player() {
       credentials: 'same-origin',
       body: JSON.stringify({
         stage_key: 'A_BIG5',
-        payload: { items, scores, attention_check_failures: attentionCheckFailures },
-        score: Math.round(Object.values(scores).reduce((a, b) => a + b, 0) / 5),
+        payload: { answers },
         duration_s,
       }),
     });

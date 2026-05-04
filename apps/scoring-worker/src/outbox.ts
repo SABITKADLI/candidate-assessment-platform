@@ -1,6 +1,6 @@
-import crypto from 'node:crypto';
 import pino from 'pino';
 import { sql, auditLog } from '@cap/db';
+import { buildAtsHeaders } from './atsSignature';
 
 // Polls app.ats_outbox for due rows, delivers via HTTP with an HMAC-SHA256
 // signature header, backs off exponentially on failure, gives up after 8 tries.
@@ -65,25 +65,22 @@ async function drain(): Promise<void> {
 
 async function deliver(r: { id: string; session_id: string; ats: Provider; payload: unknown; attempts: number }): Promise<void> {
   const url = URLS[r.ats];
-  const secret = SECRETS[r.ats] ?? '';
+  const secret = SECRETS[r.ats];
   if (!url) {
     await fail(r, `no_url_for_${r.ats}`, /* permanent */ true);
     return;
   }
+  if (!secret) {
+    await fail(r, `no_secret_for_${r.ats}`, /* permanent */ true);
+    return;
+  }
   const body = JSON.stringify(r.payload);
-  const ts = Date.now().toString();
-  const sig = crypto.createHmac('sha256', secret).update(`${ts}.${body}`).digest('hex');
 
   let status = 0; let bodyText = '';
   try {
     const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Cap-Timestamp': ts,
-        'X-Cap-Signature': `sha256=${sig}`,
-        'X-Cap-Outbox-Id': r.id,
-      },
+      headers: buildAtsHeaders(secret, body, r.id),
       body,
       // Safety net — BullMQ isn't in this path, so we enforce our own timeout.
       signal: AbortSignal.timeout(15_000),

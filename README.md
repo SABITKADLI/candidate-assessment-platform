@@ -50,12 +50,12 @@ Token-gated assessment portal. Candidate receives an invite URL, is routed throu
 | `/s/[token]/welcome` | Stage completion + Stage B pipeline link |
 | `/s/[token]/a_resume` | Stage A: Resume upload (PDF/DOCX, S3) |
 | `/s/[token]/a_id_liveness` | Stage A: Identity + liveness check |
-| `/s/[token]/a_gma` | Stage A: General mental ability (timed, server-graded) |
-| `/s/[token]/a_big5` | Stage A: Big Five personality (50 items) |
+| `/s/[token]/a_gma` | Stage A: General mental ability (20 timed items sampled from 50, server-graded) |
+| `/s/[token]/a_big5` | Stage A: Big Five personality (122 items including attention checks) |
 | `/s/[token]/a_mbti` | Stage A: MBTI type indicator |
 | `/s/[token]/a_rorschach` | Stage A: Rorschach inkblot (10 cards) |
-| `/s/[token]/a_integrity` | Stage A: Integrity scale (30 items) |
-| `/s/[token]/a_sjt` | Stage A: Situational judgement (16 items) |
+| `/s/[token]/a_integrity` | Stage A: Integrity scale (32 items) |
+| `/s/[token]/a_sjt` | Stage A: Situational judgement (10 scenarios + attention check) |
 | `/s/[token]/b_coding` | Stage B: Coding challenge (sandbox execution) |
 | `/s/[token]/b_debug` | Stage B: Debug challenge |
 | `/s/[token]/b_work_sample` | Stage B: Work sample (written design response) |
@@ -360,6 +360,12 @@ SCORING_QUEUE=scoring-runs
 SCORING_CONCURRENCY=2
 ANTHROPIC_API_KEY=...
 MEMO_MODEL=claude-sonnet-4-6-20250930
+ATS_GREENHOUSE_URL=
+ATS_GREENHOUSE_SECRET=
+ATS_LEVER_URL=
+ATS_LEVER_SECRET=
+ATS_WORKDAY_URL=
+ATS_WORKDAY_SECRET=
 ```
 
 Sandbox worker values:
@@ -386,6 +392,13 @@ docker compose -f docker-compose.workers.yml --profile sandbox up -d
 
 docker compose -f docker-compose.workers.yml --profile all ps
 docker compose -f docker-compose.workers.yml --profile all logs -f
+```
+
+After filling real ATS webhook credentials, verify HMAC delivery before relying
+on live outbox rows:
+
+```bash
+pnpm --filter @cap/scoring-worker ats:check
 ```
 
 On Windows PowerShell, build the candidate-code runner image with:
@@ -512,11 +525,11 @@ audit.audit_log         seq, actor, action, target, payload, prev_hash, hash  (t
 - [x] All 8 Stage A pages: Resume, ID Liveness, GMA, Big Five, MBTI, Rorschach, Integrity, SJT
 - [x] All 5 Stage B pages: Coding, Debug, Work Sample, Async Video, Verbal
 - [x] AntibotBoot fingerprinting on every stage
-- [x] GmaPlayer — timed test, server-side question bank + shuffle, grading
+- [x] GmaPlayer — 20-item timed test sampled from 50-item server-side bank, shuffled and graded on the server
 - [x] CodingPlayer — code submission to sandbox queue
 - [x] ResumeUploader — drag-and-drop PDF/DOCX, direct S3 upload, progress indicator
 - [x] Resume/liveness/video/audio direct-to-S3 uploads via presigned URLs
-- [x] Stage completion API — timing flags, attention-check flags, scoring enqueue
+- [x] Stage completion API — server-side validation/scoring, timing flags, attention-check flags, scoring enqueue
 - [x] B_CODING + B_DEBUG submit routes → sandbox queue
 - [x] A_GMA next-question route (server-side item bank)
 - [x] Turnstile verify route
@@ -542,12 +555,14 @@ audit.audit_log         seq, actor, action, target, payload, prev_hash, hash  (t
 #### Scoring worker
 - [x] BullMQ async worker (configurable concurrency)
 - [x] Stage scorers: B_WORK_SAMPLE via Claude API (word-count fallback), B_ASYNC_VIDEO/B_VERBAL artifact presence, A_RESUME/A_ID_LIVENESS presence=100
+- [x] Server-side scoring for A_BIG5, A_MBTI, A_SJT, A_INTEGRITY, plus completion-only A_RORSCHACH policy
 - [x] Composite score: weighted bucket average + proctoring multiplier (clamped 0.5–1.0)
 - [x] Missing buckets excluded from denominator (partial sessions score fairly)
 - [x] Claude-generated assessment memo: markdown + advance/hold/decline recommendation
 - [x] S3 memo upload with key stored on scores row
 - [x] ATS outbox: Greenhouse (`score_card`), Lever (`note`), Workday (`assessment_result`) payload shapes
 - [x] Outbox delivery loop: HMAC-SHA256 signature, exponential backoff, 8-attempt giveup
+- [x] ATS webhook credential check command (`pnpm --filter @cap/scoring-worker ats:check`)
 
 #### Sandbox worker
 - [x] Docker/gVisor isolated execution
@@ -575,23 +590,20 @@ audit.audit_log         seq, actor, action, target, payload, prev_hash, hash  (t
 - [ ] **Webcam proctoring stream** — `webcam_frame` is an artifact kind and screenshots are referenced in the DB, but no live webcam capture UI exists during stages.
 - [ ] **Consent / onboarding page** — `zConsentPayload` schema and `fingerprint` field exist but no consent route or page is implemented.
 - [ ] **FingerprintJS Pro** — `fingerprint` field in consent is optional and unenforced; the FingerprintJS Pro SDK is not yet integrated.
-- [ ] **GMA item bank expansion** — currently 10 items (`GMA_N_ITEMS = 10`); production target is 50 items.
 - [ ] **Candidate landing page** — `/` shows minimal error states only; a proper branded invite landing page is missing.
 
 #### Scoring
 - [ ] **B_DEBUG end-to-end scoring** — the debug submit route exists and enqueues to the sandbox, but the specific debug problem set and test runner configuration have not been confirmed working end-to-end.
-- [ ] **A_BIG5 / A_MBTI / A_SJT / A_INTEGRITY server-side validation** — these stages submit self-scored responses from the client; no independent server-side re-scoring of raw item responses exists.
-- [ ] **A_RORSCHACH scoring** — projective test, completion-only. Needs a defined policy (presence=100, or omit from composite entirely, or fixed weight=0).
 
 #### ATS integration
-- [ ] **Live ATS delivery** — the outbox loop, payload builder, and HMAC signing are implemented. Actual Greenhouse / Lever / Workday endpoints + credentials (`ATS_*_URL`, `ATS_*_SECRET`) need to be provisioned and tested against live accounts.
+- [ ] **Live ATS credentials** — the outbox loop, payload builder, HMAC signing, and credential check command are implemented. Actual Greenhouse / Lever / Workday webhook endpoints + secrets (`ATS_*_URL`, `ATS_*_SECRET`) still need to be provisioned and checked against live accounts.
 
 #### Infrastructure
 - [ ] **Always-on worker host** — worker containers build and boot locally, but production still needs a VPS/worker host running `docker-compose.workers.yml` continuously.
 - [ ] **S3 presign endpoint** — MCP server delegates to `S3_PRESIGN_URL` but that endpoint is not implemented in the recruiter app.
 
 #### Testing
-- [ ] **Broader unit tests** — basic Node tests cover upload contracts and migration files; route/component logic still needs coverage.
+- [ ] **Broader unit tests** — basic Node tests cover upload contracts, migrations, server-side stage scoring, and ATS signing; route/component logic still needs coverage.
 - [ ] **Integration tests** — no test setup or fixtures.
 - [ ] **E2E tests** — no Playwright or Cypress.
 

@@ -54,6 +54,7 @@ prompt.
   with `X-Cap-Timestamp`. Receivers MUST reject if `abs(now - ts) > 5 min`.
 - Giveup after 8 attempts (max 1 h backoff); `last_error` preserved for ops.
 - Permanent failure if provider URL is unset (`status=failed`, no retries).
+- Permanent failure if provider secret is unset (`status=failed`, no retries).
 
 ## Env
 
@@ -77,6 +78,17 @@ ATS_LEVER_SECRET=
 ATS_WORKDAY_URL=
 ATS_WORKDAY_SECRET=
 ```
+
+After filling any real provider pair, run a signed connection check before
+enabling live pushes:
+
+```bash
+pnpm --filter @cap/scoring-worker ats:check
+```
+
+The check posts a small `cap_ats_connection_check` payload with the same HMAC
+headers used by the outbox loop. It prints provider names and HTTP status only;
+it does not print secrets.
 
 For the current production bucket in Stockholm, use:
 
