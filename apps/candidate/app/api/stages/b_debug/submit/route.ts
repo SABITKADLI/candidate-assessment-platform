@@ -96,7 +96,11 @@ async function handlePost(req: Request) {
       stage_key: 'B_DEBUG',
       reason: publicErrorDetail(err),
     }).catch(() => undefined);
-    return unavailable('sandbox_enqueue_failed', 'Could not enqueue the debug evaluation. Check REDIS_URL and sandbox worker queue health.');
+    const reason = publicErrorDetail(err);
+    return unavailable(
+      'sandbox_enqueue_failed',
+      `Could not enqueue the debug evaluation. ${reason}`,
+    );
   }
 
   await sql`

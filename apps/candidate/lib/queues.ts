@@ -72,7 +72,7 @@ export function getSandboxQueue(): Queue<SandboxJobData> | null {
 export async function enqueueSandbox(job: SandboxJobData): Promise<string | null> {
   const q = getSandboxQueue();
   if (!q) return null;
-  const jobId = `${job.stage_attempt_id}:sandbox`;
+  const jobId = `sandbox-${job.stage_attempt_id}`;
   await q.add('run', job, {
     jobId,
     removeOnComplete: { age: 3600 * 24, count: 5000 },
@@ -89,7 +89,7 @@ export async function enqueueScoring(job: ScoringJob): Promise<string | null> {
   const q = getScoringQueue();
   if (!q) return null;
   // jobId de-dupes burst triggers from the same session in the same reason bucket.
-  const jobId = `${job.session_id}:${job.reason}:${Date.now()}`;
+  const jobId = `score-${job.session_id}-${job.reason}-${Date.now()}`;
   await q.add('score', job, {
     jobId,
     removeOnComplete: { age: 3600, count: 1000 },
