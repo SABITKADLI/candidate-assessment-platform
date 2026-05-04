@@ -8,6 +8,7 @@ import { resolveFlagReason } from '@/lib/flagReasons';
 import { RescoreButton } from '@/lib/RescoreButton';
 import { getEmailLogForSession } from '@/lib/emailLog';
 import { ResendEmailButton } from '@/lib/ResendEmailButton';
+import { presignGet } from '@/lib/s3';
 import type { SessionStatus, FlagSeverity } from '@cap/shared/enums';
 
 export const dynamic = 'force-dynamic';
@@ -40,6 +41,7 @@ type AttemptRow = {
   duration_s: number | null;
   started_at: Date | null;
   completed_at: Date | null;
+  raw_payload: Record<string, unknown> | null;
 };
 
 type ArtifactRow = {
@@ -50,6 +52,7 @@ type ArtifactRow = {
   size_bytes: string;
   mime_type: string | null;
   created_at: Date;
+  presigned_url: string | null;
 };
 
 type FlagRow = {
@@ -178,6 +181,271 @@ function ScorePanel({ score }: { score: ScoreRow }) {
   );
 }
 
+/* ── Artifact media card ───────────────────────────────────────────────── */
+function ArtifactCard({ artifact }: { artifact: ArtifactRow }) {
+  const label = artifact.stage_key ? (STAGE_LABELS[artifact.stage_key] ?? artifact.stage_key) : artifact.kind;
+  const downloadHref = `/api/artifacts/${artifact.id}/download`;
+  const url = artifact.presigned_url;
+
+  return (
+    <Card style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--cap-fg-1)' }}>{label}</div>
+          <div style={{ fontSize: 11, color: 'var(--cap-fg-3)', fontFamily: 'var(--cap-font-mono)', marginTop: 2 }}>
+            {artifact.kind} · {fmtBytes(artifact.size_bytes)} · {artifact.mime_type ?? '—'}
+          </div>
+        </div>
+        <a
+          href={downloadHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '5px 12px', borderRadius: 'var(--cap-radius-sm)',
+            fontSize: 12, fontWeight: 500,
+            color: 'var(--cap-accent)',
+            background: 'var(--cap-accent-surface)',
+            border: '1px solid var(--cap-accent)',
+            textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0,
+          }}
+        >
+          ↓ Download
+        </a>
+      </div>
+
+      {/* Inline player */}
+      {artifact.kind === 'video' && url && (
+        <video
+          src={url}
+          controls
+          style={{ width: '100%', borderRadius: 'var(--cap-radius-md)', background: '#000', maxHeight: 400 }}
+        />
+      )}
+      {artifact.kind === 'audio' && url && (
+        <audio
+          src={url}
+          controls
+          style={{ width: '100%' }}
+        />
+      )}
+      {artifact.kind === 'resume' && url && (
+        <iframe
+          src={url}
+          title="Resume preview"
+          style={{ width: '100%', height: 500, border: '1px solid var(--cap-border)', borderRadius: 'var(--cap-radius-md)' }}
+        />
+      )}
+
+      <div style={{ fontSize: 11, color: 'var(--cap-fg-3)', fontFamily: 'var(--cap-font-mono)' }}>
+        Uploaded {artifact.created_at.toISOString().slice(0, 16).replace('T', ' ')}
+      </div>
+    </Card>
+  );
+}
+
+/* ── Per-stage answer blocks ───────────────────────────────────────────── */
+function StageAnswerBlock({ attempt }: { attempt: AttemptRow }) {
+  const p = attempt.raw_payload;
+  if (!p) return null;
+
+  switch (attempt.stage_key) {
+    case 'B_WORK_SAMPLE': {
+      const text = typeof p.text === 'string' ? p.text : null;
+      const wc = typeof p.word_count === 'number' ? p.word_count : null;
+      if (!text) return null;
+      return (
+        <Card style={{ padding: '18px 20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--cap-fg-1)' }}>Work Sample</span>
+            {wc != null && (
+              <span style={{ fontSize: 11, fontFamily: 'var(--cap-font-mono)', color: 'var(--cap-fg-3)' }}>
+                {wc} words
+              </span>
+            )}
+          </div>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--cap-fg-1)', lineHeight: 1.75, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            {text}
+          </p>
+        </Card>
+      );
+    }
+
+    case 'A_RORSCHACH': {
+      const responses = p.responses as Record<string, string> | undefined;
+      const metrics = p.response_metrics as Array<{ id: string; chars: number; words: number }> | undefined;
+      if (!responses) return null;
+      return (
+        <Card style={{ padding: '18px 20px' }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--cap-fg-1)', marginBottom: 14 }}>Rorschach Responses</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {Object.entries(responses).map(([id, text]) => {
+              const m = metrics?.find((x) => x.id === id);
+              return (
+                <div key={id} style={{ padding: '10px 14px', background: 'var(--cap-surface-2)', borderRadius: 'var(--cap-radius-sm)', border: '1px solid var(--cap-border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, fontFamily: 'var(--cap-font-mono)', color: 'var(--cap-accent)' }}>{id}</span>
+                    {m && <span style={{ fontSize: 11, fontFamily: 'var(--cap-font-mono)', color: 'var(--cap-fg-3)' }}>{m.words}w / {m.chars}c</span>}
+                  </div>
+                  <p style={{ margin: 0, fontSize: 13, color: 'var(--cap-fg-1)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{text}</p>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      );
+    }
+
+    case 'A_SJT': {
+      const items = p.items as Array<{ id: string; situation: string; chosen_key: string | null; chosen_text: string | null; item_score: number | null; isAttentionCheck?: boolean }> | undefined;
+      if (!items?.length) return null;
+      return (
+        <Card style={{ overflow: 'hidden' }}>
+          <div style={{ padding: '14px 16px', fontSize: 13, fontWeight: 600, color: 'var(--cap-fg-1)', borderBottom: '1px solid var(--cap-border)' }}>
+            Situational Judgment — Answers
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr>
+                {['#', 'Situation (truncated)', 'Chosen', 'Score'].map((h) => (
+                  <th key={h} scope="col" style={TH}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item, i) => (
+                <tr key={item.id} className="cap-table-row">
+                  <td style={{ ...TD, fontFamily: 'var(--cap-font-mono)', fontSize: 11, color: 'var(--cap-fg-3)' }}>{i + 1}</td>
+                  <td style={{ ...TD, maxWidth: 300, color: 'var(--cap-fg-2)', fontSize: 12 }}>
+                    {item.situation.slice(0, 120)}{item.situation.length > 120 ? '…' : ''}
+                  </td>
+                  <td style={{ ...TD, fontSize: 12 }}>{item.chosen_text ?? '—'}</td>
+                  <td style={{ ...TD, fontFamily: 'var(--cap-font-mono)', fontWeight: 600, color: item.item_score != null ? 'var(--cap-fg-1)' : 'var(--cap-fg-3)' }}>
+                    {item.item_score != null ? item.item_score : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      );
+    }
+
+    case 'A_BIG5': {
+      const scores = p.scores as Record<string, number> | undefined;
+      const type = p.type as string | undefined;
+      const failures = p.attention_check_failures as unknown[] | undefined;
+      if (!scores) return null;
+      return (
+        <Card style={{ padding: '18px 20px' }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--cap-fg-1)', marginBottom: 14 }}>Big Five — Factor Scores</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {Object.entries(scores).map(([factor, val]) => (
+              <ProgressBar key={factor} value={Number(val)} label={factor.charAt(0).toUpperCase() + factor.slice(1)} detail={Number(val).toFixed(1)} />
+            ))}
+          </div>
+          {failures && failures.length > 0 && (
+            <div style={{ marginTop: 12, fontSize: 11, color: 'var(--cap-warning)', fontFamily: 'var(--cap-font-mono)' }}>
+              {failures.length} attention check failure{failures.length > 1 ? 's' : ''}
+            </div>
+          )}
+          {type && <div style={{ marginTop: 8, fontSize: 11, color: 'var(--cap-fg-3)', fontFamily: 'var(--cap-font-mono)' }}>type: {type}</div>}
+        </Card>
+      );
+    }
+
+    case 'A_MBTI': {
+      const type = p.type as string | undefined;
+      const clarityScore = p.clarity_score as number | undefined;
+      const scores = p.scores as Record<string, { a: number; b: number }> | undefined;
+      if (!type && !scores) return null;
+      return (
+        <Card style={{ padding: '18px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--cap-fg-1)' }}>MBTI</div>
+            {type && <span style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--cap-font-mono)', color: 'var(--cap-accent)' }}>{type}</span>}
+            {clarityScore != null && <span style={{ fontSize: 12, color: 'var(--cap-fg-3)', fontFamily: 'var(--cap-font-mono)' }}>clarity {clarityScore.toFixed(1)}</span>}
+          </div>
+          {scores && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {Object.entries(scores).map(([dim, { a, b }]) => {
+                const total = a + b || 1;
+                const pctA = Math.round((a / total) * 100);
+                return (
+                  <div key={dim} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ width: 32, fontSize: 11, fontFamily: 'var(--cap-font-mono)', color: 'var(--cap-fg-2)', flexShrink: 0 }}>{dim}</span>
+                    <div style={{ flex: 1, height: 8, background: 'var(--cap-surface-2)', borderRadius: 9999, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pctA}%`, background: 'var(--cap-accent)', borderRadius: 9999 }} />
+                    </div>
+                    <span style={{ fontSize: 11, fontFamily: 'var(--cap-font-mono)', color: 'var(--cap-fg-3)', width: 36, textAlign: 'right' }}>{pctA}%</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      );
+    }
+
+    case 'A_INTEGRITY': {
+      const score = attempt.score != null ? Number(attempt.score) : null;
+      if (score == null) return null;
+      const tone = score >= 70 ? 'var(--cap-success)' : score >= 45 ? 'var(--cap-warning)' : 'var(--cap-danger)';
+      return (
+        <Card style={{ padding: '18px 20px' }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--cap-fg-1)', marginBottom: 10 }}>Integrity</div>
+          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--cap-font-mono)', color: tone }}>{score.toFixed(1)}<span style={{ fontSize: 13, color: 'var(--cap-fg-3)' }}> / 100</span></div>
+        </Card>
+      );
+    }
+
+    case 'B_CODING':
+    case 'B_DEBUG': {
+      const results = p.test_results as Array<{ name: string; passed: boolean; output?: string }> | undefined;
+      const passed = typeof p.tests_passed === 'number' ? p.tests_passed : null;
+      const total = typeof p.tests_total === 'number' ? p.tests_total : null;
+      if (!results && passed == null) return null;
+      return (
+        <Card style={{ overflow: 'hidden' }}>
+          <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--cap-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--cap-fg-1)' }}>
+              {STAGE_LABELS[attempt.stage_key] ?? attempt.stage_key} — Test Results
+            </span>
+            {passed != null && total != null && (
+              <span style={{ fontSize: 12, fontFamily: 'var(--cap-font-mono)', color: passed === total ? 'var(--cap-success)' : 'var(--cap-warning)' }}>
+                {passed}/{total} passed
+              </span>
+            )}
+          </div>
+          {results && (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <tbody>
+                {results.map((r, i) => (
+                  <tr key={i} className="cap-table-row">
+                    <td style={{ ...TD, width: 20, paddingRight: 6 }}>
+                      <span style={{ color: r.passed ? 'var(--cap-success)' : 'var(--cap-danger)' }}>{r.passed ? '✓' : '✕'}</span>
+                    </td>
+                    <td style={{ ...TD, fontFamily: 'var(--cap-font-mono)', fontSize: 12 }}>{r.name}</td>
+                    {r.output && (
+                      <td style={{ ...TD, fontSize: 11, color: 'var(--cap-fg-3)', fontFamily: 'var(--cap-font-mono)', maxWidth: 300, wordBreak: 'break-all' }}>
+                        {r.output.slice(0, 200)}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      );
+    }
+
+    default:
+      return null;
+  }
+}
+
 /* ── Page ──────────────────────────────────────────────────────────────── */
 export default async function SessionDetailPage({
   params,
@@ -208,19 +476,28 @@ export default async function SessionDetailPage({
 
   const attempts = await sql<AttemptRow[]>`
     SELECT stage_key::text AS stage_key, score::text AS score,
-           duration_s, started_at, completed_at
+           duration_s, started_at, completed_at, raw_payload
     FROM app.stage_attempts
     WHERE session_id = ${id}::uuid
     ORDER BY completed_at ASC NULLS LAST, stage_key
   `;
 
-  const artifacts = await sql<ArtifactRow[]>`
+  const rawArtifacts = await sql<Omit<ArtifactRow, 'presigned_url'>[]>`
     SELECT id, stage_key::text AS stage_key, kind::text AS kind,
            s3_key, size_bytes::text AS size_bytes, mime_type, created_at
     FROM app.artifacts
     WHERE session_id = ${id}::uuid
     ORDER BY created_at
   `;
+
+  // Generate presigned URLs for media artifacts (valid 1hr)
+  const artifacts: ArtifactRow[] = await Promise.all(
+    rawArtifacts.map(async (a) => {
+      const needsUrl = a.kind === 'video' || a.kind === 'audio' || a.kind === 'resume';
+      const presigned_url = needsUrl ? await presignGet(a.s3_key).catch(() => null) : null;
+      return { ...a, presigned_url };
+    }),
+  );
 
   const flags = await sql<FlagRow[]>`
     SELECT id, severity::text AS severity, reason,
@@ -233,6 +510,14 @@ export default async function SessionDetailPage({
   const emailLog = await getEmailLogForSession(id).catch(() => []);
 
   const displayName = sessionRow.email ?? id.slice(0, 8) + '…';
+
+  // Separate media artifacts from other artifacts
+  const mediaArtifacts = artifacts.filter((a) => ['video', 'audio', 'resume'].includes(a.kind));
+  const otherArtifacts = artifacts.filter((a) => !['video', 'audio', 'resume'].includes(a.kind));
+
+  // Stage answers to display (skip pure-presence stages)
+  const answerStages = ['B_WORK_SAMPLE', 'A_RORSCHACH', 'A_SJT', 'A_BIG5', 'A_MBTI', 'A_INTEGRITY', 'B_CODING', 'B_DEBUG'];
+  const answerAttempts = attempts.filter((a) => answerStages.includes(a.stage_key) && a.raw_payload);
 
   return (
     <div style={{ display: 'flex', minHeight: '100dvh' }}>
@@ -281,7 +566,31 @@ export default async function SessionDetailPage({
           </Card>
         )}
 
-        {/* Stage attempts */}
+        {/* Media artifacts — video, audio, resume */}
+        {mediaArtifacts.length > 0 && (
+          <section aria-labelledby="media-heading" style={{ marginBottom: 'var(--cap-space-8)' }}>
+            <h2 id="media-heading" style={{ margin: '0 0 12px', fontSize: 'var(--cap-text-sm)', fontWeight: 500, color: 'var(--cap-fg-2)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+              Submissions
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {mediaArtifacts.map((a) => <ArtifactCard key={a.id} artifact={a} />)}
+            </div>
+          </section>
+        )}
+
+        {/* Stage answers */}
+        {answerAttempts.length > 0 && (
+          <section aria-labelledby="answers-heading" style={{ marginBottom: 'var(--cap-space-8)' }}>
+            <h2 id="answers-heading" style={{ margin: '0 0 12px', fontSize: 'var(--cap-text-sm)', fontWeight: 500, color: 'var(--cap-fg-2)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+              Stage answers
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {answerAttempts.map((a) => <StageAnswerBlock key={a.stage_key} attempt={a} />)}
+            </div>
+          </section>
+        )}
+
+        {/* Stage attempts table */}
         {attempts.length > 0 && (
           <section aria-labelledby="attempts-heading" style={{ marginBottom: 'var(--cap-space-8)' }}>
             <h2 id="attempts-heading" style={{ margin: '0 0 12px', fontSize: 'var(--cap-text-sm)', fontWeight: 500, color: 'var(--cap-fg-2)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
@@ -386,23 +695,23 @@ export default async function SessionDetailPage({
           </section>
         )}
 
-        {/* Artifacts */}
-        {artifacts.length > 0 && (
+        {/* Other artifacts (liveness, etc.) */}
+        {otherArtifacts.length > 0 && (
           <section aria-labelledby="artifacts-heading" style={{ marginBottom: 'var(--cap-space-8)' }}>
             <h2 id="artifacts-heading" style={{ margin: '0 0 12px', fontSize: 'var(--cap-text-sm)', fontWeight: 500, color: 'var(--cap-fg-2)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-              Artifacts
+              Other artifacts
             </h2>
             <Card style={{ overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr>
-                    {['Kind', 'Stage', 'Size', 'Type', 'Uploaded'].map((h) => (
+                    {['Kind', 'Stage', 'Size', 'Type', 'Uploaded', ''].map((h) => (
                       <th key={h} scope="col" style={TH}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {artifacts.map((a) => (
+                  {otherArtifacts.map((a) => (
                     <tr key={a.id} className="cap-table-row">
                       <td style={{ ...TD, fontFamily: 'var(--cap-font-mono)', fontSize: 11, color: 'var(--cap-accent)' }}>
                         {a.kind}
@@ -418,6 +727,16 @@ export default async function SessionDetailPage({
                       </td>
                       <td style={{ ...TD, fontFamily: 'var(--cap-font-mono)', fontSize: 11, color: 'var(--cap-fg-2)', whiteSpace: 'nowrap' }}>
                         {a.created_at.toISOString().slice(0, 16).replace('T', ' ')}
+                      </td>
+                      <td style={TD}>
+                        <a
+                          href={`/api/artifacts/${a.id}/download`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ fontSize: 12, color: 'var(--cap-accent)', textDecoration: 'none' }}
+                        >
+                          ↓ Download
+                        </a>
                       </td>
                     </tr>
                   ))}

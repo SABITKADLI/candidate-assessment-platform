@@ -69,6 +69,11 @@ export function AsyncVideoPlayer() {
       setPhase('preview');
     };
     rec.start(1000);
+    // Re-attach stream so the live feed stays visible when recording begins
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream;
+      void videoRef.current.play();
+    }
     setPhase('recording');
 
     let elapsed = 0;
@@ -147,7 +152,7 @@ export function AsyncVideoPlayer() {
       {/* Video preview / camera */}
       {(phase === 'prep' || phase === 'recording') && (
         <div style={{ position: 'relative', borderRadius: 'var(--cap-radius-lg)', overflow: 'hidden', background: '#000', aspectRatio: '16/9' }}>
-          <video ref={videoRef} muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           <div style={{ position: 'absolute', top: 12, right: 14, display: 'flex', gap: 8, alignItems: 'center' }}>
             {phase === 'prep' && (
               <span style={{ fontFamily: 'var(--cap-font-mono)', fontSize: 13, color: 'rgba(255,255,255,0.75)', background: 'rgba(0,0,0,0.5)', padding: '3px 8px', borderRadius: 4 }}>
@@ -155,12 +160,12 @@ export function AsyncVideoPlayer() {
               </span>
             )}
             {phase === 'recording' && (
-              <>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--cap-danger)', display: 'inline-block', animation: 'pulse 1s infinite' }} />
-                <span style={{ fontFamily: 'var(--cap-font-mono)', fontSize: 13, color: 'rgba(255,255,255,0.9)', background: 'rgba(0,0,0,0.5)', padding: '3px 8px', borderRadius: 4 }}>
-                  {String(Math.floor(recTimer / 60)).padStart(2,'0')}:{String(recTimer % 60).padStart(2,'0')} / {MAX_RECORD_SECONDS / 60}:00
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--cap-danger)', padding: '4px 10px', borderRadius: 6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff', display: 'inline-block', animation: 'pulse 1s infinite' }} />
+                <span style={{ fontFamily: 'var(--cap-font-mono)', fontSize: 13, fontWeight: 700, color: '#fff' }}>
+                  REC {String(Math.floor(recTimer / 60)).padStart(2,'0')}:{String(recTimer % 60).padStart(2,'0')} / {MAX_RECORD_SECONDS / 60}:00
                 </span>
-              </>
+              </span>
             )}
           </div>
         </div>

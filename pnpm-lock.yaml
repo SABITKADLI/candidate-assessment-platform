@@ -133,6 +133,12 @@ importers:
       '@auth0/nextjs-auth0':
         specifier: ^4.0.2
         version: 4.18.0(next@15.5.15(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@aws-sdk/client-s3':
+        specifier: ^3.670.0
+        version: 3.1033.0
+      '@aws-sdk/s3-request-presigner':
+        specifier: ^3.670.0
+        version: 3.1033.0
       '@cap/db':
         specifier: workspace:*
         version: link:../../packages/db
