@@ -95,10 +95,6 @@ export async function POST(req: Request) {
     expires_in: 15 * 60,
     headers: {
       'Content-Type': mimeType,
-      'x-amz-checksum-sha256': checksumBase64,
-      'x-amz-meta-sha256': sha256_hex,
-      'x-amz-meta-session-id': sessionId,
-      'x-amz-meta-upload-kind': kind,
     },
   });
 }

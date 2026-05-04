@@ -7,7 +7,7 @@ const migrationsDir = path.resolve('db/migrations');
 
 test('SQL migrations are ordered and wrapped in explicit transactions', async () => {
   const files = (await readdir(migrationsDir)).filter((file) => file.endsWith('.sql')).sort();
-  assert.ok(files.length >= 10, 'expected the committed migration set');
+  assert.ok(files.length >= 11, 'expected the committed migration set');
 
   for (const [index, file] of files.entries()) {
     const expectedPrefix = String(index + 1).padStart(4, '0');
