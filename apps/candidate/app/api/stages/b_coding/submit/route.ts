@@ -19,6 +19,15 @@ const STAGE_B_ORDER = [
 ] as const;
 
 export async function POST(req: Request) {
+  try {
+    return await handlePost(req);
+  } catch (err) {
+    console.error('[b_coding_submit] unhandled error', err);
+    return serverError('submit_failed');
+  }
+}
+
+async function handlePost(req: Request) {
   const limited = await rateLimit(req, 'b_coding_submit', 15, 60);
   if (limited) return limited;
 
@@ -49,20 +58,54 @@ export async function POST(req: Request) {
   // Upsert stage_attempt and get its ID.
   const attempts = await sql<Array<{ id: string }>>`
     INSERT INTO app.stage_attempts (
-      session_id, stage_key, attempt_no, raw_payload, started_at, completed_at
+      session_id, stage_key, attempt_no, raw_payload, started_at
     ) VALUES (
       ${sid}::uuid, 'B_CODING'::app.stage_key, 1,
       ${sql.json({ code, language, problem_id: problem.id }) as never},
-      now(), now()
+      now()
     )
     ON CONFLICT (session_id, stage_key, attempt_no) DO UPDATE
       SET raw_payload  = app.stage_attempts.raw_payload || EXCLUDED.raw_payload,
-          completed_at = now(),
+          score        = NULL,
+          duration_s   = NULL,
           started_at   = COALESCE(app.stage_attempts.started_at, EXCLUDED.started_at)
     RETURNING id
   `;
   const attempt = attempts[0];
   if (!attempt) return bad('db_error');
+
+  let sandboxJobId: string | null;
+  try {
+    sandboxJobId = await enqueueSandbox({
+      stage_attempt_id: attempt.id,
+      session_id: sid,
+      stage_key: 'B_CODING',
+      run: {
+        id: randomUUID(),
+        language,
+        files: [{ path: 'solution.py', content: code }],
+        tests: problem.testFiles,
+        test_cmd: problem.testCmd,
+        timeout_ms: problem.timeoutMs,
+        memory_mb: problem.memoryMb,
+      },
+    });
+    if (!sandboxJobId) throw new Error('sandbox_queue_not_configured');
+  } catch (err) {
+    console.error('[b_coding_submit] sandbox enqueue failed', err);
+    await auditLog('candidate-app', 'sandbox.enqueue.failed', `stage_attempt:${attempt.id}`, {
+      stage_key: 'B_CODING',
+      reason: publicErrorDetail(err),
+    }).catch(() => undefined);
+    return unavailable('sandbox_enqueue_failed', 'Could not enqueue the coding evaluation. Check REDIS_URL and sandbox worker queue health.');
+  }
+
+  await sql`
+    UPDATE app.stage_attempts
+       SET completed_at = now(),
+           raw_payload = raw_payload || ${sql.json({ sandbox_job_id: sandboxJobId } as never)}
+     WHERE id = ${attempt.id}::uuid
+  `;
 
   // Check stage-group completion.
   const doneRows = await sql<Array<{ done: boolean }>>`
@@ -82,26 +125,12 @@ export async function POST(req: Request) {
   }
 
   await auditLog('candidate-app', 'stage.complete', `session:${sid}`, {
-    stage_key: 'B_CODING', stage_group_done: doneRows[0]?.done ?? false,
-  });
-
-  // Enqueue sandbox evaluation (fire-and-forget; candidate proceeds immediately).
-  await enqueueSandbox({
-    stage_attempt_id: attempt.id,
-    session_id: sid,
     stage_key: 'B_CODING',
-    run: {
-      id: randomUUID(),
-      language,
-      files: [{ path: 'solution.py', content: code }],
-      tests: problem.testFiles,
-      test_cmd: problem.testCmd,
-      timeout_ms: problem.timeoutMs,
-      memory_mb: problem.memoryMb,
-    },
+    stage_group_done: doneRows[0]?.done ?? false,
+    sandbox_job_id: sandboxJobId,
   });
 
-  return Response.json({ ok: true });
+  return Response.json({ ok: true, sandbox_job_id: sandboxJobId });
 }
 
 function bad(reason: string, detail?: string) {
@@ -113,4 +142,17 @@ function unauthorized() {
   return new Response(JSON.stringify({ error: 'no_session' }), {
     status: 401, headers: { 'Content-Type': 'application/json' },
   });
+}
+function unavailable(reason: string, detail?: string) {
+  return new Response(JSON.stringify({ error: reason, detail }), {
+    status: 503, headers: { 'Content-Type': 'application/json' },
+  });
+}
+function serverError(reason: string) {
+  return new Response(JSON.stringify({ error: reason }), {
+    status: 500, headers: { 'Content-Type': 'application/json' },
+  });
+}
+function publicErrorDetail(err: unknown): string {
+  return err instanceof Error ? err.message.slice(0, 240) : String(err).slice(0, 240);
 }

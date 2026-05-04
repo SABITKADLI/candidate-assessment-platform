@@ -33,8 +33,8 @@ export function CodingPlayer() {
       body: JSON.stringify({ code, language: problem.language }),
     });
     if (!res.ok) {
-      const j = await res.json().catch(() => ({})) as { error?: string };
-      setErrorMsg(j.error ?? `HTTP ${res.status}`);
+      const j = await res.json().catch(() => ({})) as { error?: string; detail?: string };
+      setErrorMsg(j.detail ?? j.error ?? `HTTP ${res.status}`);
       setPhase('error');
       return;
     }
