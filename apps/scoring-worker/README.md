@@ -116,6 +116,11 @@ The worker consumes `scoring-runs`. It is safe to run more than one replica for
 throughput, but keep `SCORING_CONCURRENCY` modest until database and Claude API
 limits are known.
 
+The worker also writes a redacted Redis heartbeat to
+`cap:health:worker:scoring` every 30 seconds. The recruiter `/settings` page
+uses that key to show whether the scoring worker is alive on the same Redis
+database and which production-only config groups are present.
+
 ## Triggering a scoring job
 
 From any app:

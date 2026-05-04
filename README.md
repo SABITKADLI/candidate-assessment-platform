@@ -73,6 +73,7 @@ Token-gated assessment portal. Candidate receives an invite URL, is routed throu
 | `POST /api/turnstile/verify` | Turnstile token verification |
 | `GET /api/cron/expire` | Cron: expire stale sessions |
 | `GET /api/health` | Health check |
+| `GET /api/health/queues` | Redacted production diagnostics for DB, Redis, queues, workers, S3, and Turnstile |
 
 ---
 
@@ -91,7 +92,7 @@ Internal Next.js app. Requires Auth0 and DATABASE_URL.
 | `/sessions/[id]` | Session detail: composite score, per-bucket breakdown, stage attempts, flags, artifacts, Claude memo |
 | `/flags` | All proctoring flags (open + resolved) with expandable flag reference guide |
 | `/outbox` | ATS delivery outbox: per-row status, retry button, error log |
-| `/settings` | Runtime config display + rescore all pending sessions panel |
+| `/settings` | Production diagnostics + manual rescore panel |
 | `/roles` | Role list — custom stage sets and scoring weights |
 | `/roles/new` | Create role (presets: Developer, PM, Data Scientist, Designer, GM) |
 | `/roles/[id]` | Edit role |
@@ -110,6 +111,7 @@ Internal Next.js app. Requires Auth0 and DATABASE_URL.
 | `POST /api/outbox/retry` | Retry failed ATS delivery |
 | `GET /api/cron/expire-sessions` | Cron: expire stale sessions |
 | `GET /api/health` | Health check |
+| `GET /api/health/diagnostics` | Auth-protected combined diagnostics for admin + assessment |
 
 ---
 
@@ -410,6 +412,19 @@ powershell -ExecutionPolicy Bypass -File apps/sandbox-worker/scripts/build-image
 Do not run these workers on Vercel serverless. For production, run them on an
 always-on VPS or worker platform with Docker support. Queue names are fixed in
 `packages/shared/src/queues.ts`: `scoring-runs` and `sandbox-runs`.
+
+The workers write Redis heartbeats every 30 seconds:
+
+```text
+cap:health:worker:scoring
+cap:health:worker:sandbox
+```
+
+Open `/settings` in the recruiter console to verify the web apps, Redis queues,
+worker heartbeats, S3, Auth0, Resend, Anthropic, Turnstile, and migration state
+from one screen. For a private assessment diagnostics endpoint, set the same
+`DIAGNOSTICS_SECRET` on both Vercel projects; the admin diagnostics route will
+send it to `GET /api/health/queues`.
 
 ---
 

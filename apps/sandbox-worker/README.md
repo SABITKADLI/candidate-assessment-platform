@@ -144,6 +144,11 @@ after installing gVisor on the host and confirming `docker run --runtime runsc`
 works. `SANDBOX_SECCOMP_PATH` is optional; set it only to an absolute path that
 exists on the worker host.
 
+The worker writes a redacted Redis heartbeat to `cap:health:worker:sandbox`
+every 30 seconds. The recruiter `/settings` page uses that key, plus BullMQ
+worker registration, to show whether the sandbox worker is alive on the same
+Redis database and queue.
+
 ## Limits worth knowing
 
 - Max `timeout_ms`: 120_000 (two minutes). Stage B coding tasks shouldn't

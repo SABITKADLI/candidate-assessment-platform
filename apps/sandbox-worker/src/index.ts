@@ -40,6 +40,7 @@ const QUEUE     = process.env.SANDBOX_QUEUE ?? 'sandbox-runs';
 const CONCURRENCY = Number(process.env.SANDBOX_CONCURRENCY ?? 2);
 
 const connection = new Redis(REDIS_URL, { maxRetriesPerRequest: null });
+const stopHeartbeat = startWorkerHeartbeat();
 
 const worker = new Worker<JobData>(
   QUEUE,
@@ -120,10 +121,43 @@ worker.on('error',  (err) => log.error({ err: err.message }, 'worker.error'));
 for (const sig of ['SIGINT', 'SIGTERM'] as const) {
   process.on(sig, async () => {
     log.info({ sig }, 'shutting down');
+    stopHeartbeat();
     await worker.close();
     await connection.quit();
     process.exit(0);
   });
+}
+
+function startWorkerHeartbeat() {
+  const startedAt = new Date().toISOString();
+  const key = 'cap:health:worker:sandbox';
+
+  async function beat() {
+    try {
+      await connection.set(key, JSON.stringify({
+        worker: 'sandbox',
+        queue: QUEUE,
+        concurrency: CONCURRENCY,
+        started_at: startedAt,
+        heartbeat_at: new Date().toISOString(),
+        runtime: RUNTIME,
+        image: IMAGE,
+        config: {
+          database_url_present: Boolean(process.env.DATABASE_URL),
+          redis_url_present: Boolean(process.env.REDIS_URL),
+          sandbox_image_present: Boolean(process.env.SANDBOX_IMAGE),
+          sandbox_runtime: RUNTIME,
+          sandbox_seccomp_path_present: Boolean(process.env.SANDBOX_SECCOMP_PATH),
+        },
+      }), 'EX', 90);
+    } catch (err) {
+      log.warn({ err: String(err) }, 'heartbeat.failed');
+    }
+  }
+
+  void beat();
+  const timer = setInterval(() => void beat(), 30_000);
+  return () => clearInterval(timer);
 }
 
 function requireEnv(k: string): string {

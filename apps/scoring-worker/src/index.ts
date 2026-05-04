@@ -30,6 +30,7 @@ const SKIP_MEMO = !process.env.ANTHROPIC_API_KEY;
 if (SKIP_MEMO) log.warn('ANTHROPIC_API_KEY unset — memo generation disabled');
 
 const connection = new Redis(process.env.REDIS_URL!, { maxRetriesPerRequest: null });
+const stopHeartbeat = startWorkerHeartbeat();
 
 const worker = new Worker<JobData>(
   QUEUE,
@@ -102,9 +103,46 @@ const stopOutbox = startOutboxLoop(Number(process.env.OUTBOX_INTERVAL_MS ?? 5000
 for (const sig of ['SIGINT', 'SIGTERM'] as const) {
   process.on(sig, async () => {
     log.info({ sig }, 'shutting down');
+    stopHeartbeat();
     stopOutbox();
     await worker.close();
     await connection.quit();
     process.exit(0);
   });
+}
+
+function startWorkerHeartbeat() {
+  const startedAt = new Date().toISOString();
+  const key = 'cap:health:worker:scoring';
+
+  async function beat() {
+    try {
+      await connection.set(key, JSON.stringify({
+        worker: 'scoring',
+        queue: QUEUE,
+        concurrency: CONCURRENCY,
+        started_at: startedAt,
+        heartbeat_at: new Date().toISOString(),
+        memo_model: process.env.MEMO_MODEL ?? 'claude-sonnet-4-20250514',
+        config: {
+          database_url_present: Boolean(process.env.DATABASE_URL),
+          redis_url_present: Boolean(process.env.REDIS_URL),
+          anthropic_api_key_present: Boolean(process.env.ANTHROPIC_API_KEY),
+          aws_region: process.env.AWS_REGION ?? '',
+          s3_bucket_present: Boolean(process.env.S3_BUCKET),
+          aws_access_key_id_present: Boolean(process.env.AWS_ACCESS_KEY_ID),
+          aws_secret_access_key_present: Boolean(process.env.AWS_SECRET_ACCESS_KEY),
+          ats_greenhouse_configured: Boolean(process.env.ATS_GREENHOUSE_URL && process.env.ATS_GREENHOUSE_SECRET),
+          ats_lever_configured: Boolean(process.env.ATS_LEVER_URL && process.env.ATS_LEVER_SECRET),
+          ats_workday_configured: Boolean(process.env.ATS_WORKDAY_URL && process.env.ATS_WORKDAY_SECRET),
+        },
+      }), 'EX', 90);
+    } catch (err) {
+      log.warn({ err: String(err) }, 'heartbeat.failed');
+    }
+  }
+
+  void beat();
+  const timer = setInterval(() => void beat(), 30_000);
+  return () => clearInterval(timer);
 }
