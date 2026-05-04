@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { sql } from '@cap/db';
 
-const MODEL = process.env.MEMO_MODEL ?? 'claude-sonnet-4-6-20250930';
+const MODEL = process.env.MEMO_MODEL ?? 'claude-sonnet-4-20250514';
 
 let _anthropic: Anthropic | null = null;
 function anthropic(): Anthropic | null {

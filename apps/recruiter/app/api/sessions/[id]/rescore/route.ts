@@ -235,7 +235,7 @@ export async function POST(
     const evidence = await gatherEvidence(id, composite);
     const client = new Anthropic({ apiKey });
     const msg = await client.messages.create({
-      model: process.env.MEMO_MODEL ?? 'claude-sonnet-4-6-20250930',
+      model: process.env.MEMO_MODEL ?? 'claude-sonnet-4-20250514',
       max_tokens: 1536,
       system: MEMO_PROMPT,
       messages: [{ role: 'user', content: JSON.stringify(evidence) }],
