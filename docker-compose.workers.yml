@@ -17,7 +17,8 @@ services:
       dockerfile: apps/scoring-worker/Dockerfile
     restart: unless-stopped
     env_file:
-      - workers.env
+      - path: workers.env
+        required: false
     environment:
       NODE_ENV: production
 
@@ -28,7 +29,8 @@ services:
       dockerfile: apps/sandbox-worker/Dockerfile
     restart: unless-stopped
     env_file:
-      - workers.env
+      - path: workers.env
+        required: false
     environment:
       NODE_ENV: production
     volumes:
