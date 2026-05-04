@@ -247,6 +247,7 @@ async function checkAssessmentEndpoint(): Promise<DiagnosticCheck[]> {
   const response = await fetch(endpoint, {
     headers,
     cache: 'no-store',
+    redirect: 'manual',
     signal: AbortSignal.timeout(7_000),
   });
   const payload = await response.json().catch(() => null) as DiagnosticsResponse | null;
