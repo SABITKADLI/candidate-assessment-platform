@@ -19,7 +19,27 @@
         "REDIS_URL",
         "LOG_LEVEL",
         "ANTHROPIC_API_KEY",
-        "NEXT_PUBLIC_CANDIDATE_BASE_URL"
+        "NEXT_PUBLIC_CANDIDATE_BASE_URL",
+        "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
+        "TURNSTILE_SECRET_KEY",
+        "AWS_REGION",
+        "S3_BUCKET",
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "UPLOAD_DIR",
+        "CRON_SECRET",
+        "SCORING_QUEUE",
+        "SCORING_CONCURRENCY",
+        "SANDBOX_QUEUE",
+        "SANDBOX_CONCURRENCY",
+        "SANDBOX_IMAGE",
+        "SANDBOX_RUNTIME",
+        "SANDBOX_SECCOMP_PATH",
+        "OUTBOX_INTERVAL_MS",
+        "DATABASE_POOL_MAX",
+        "MEMO_MODEL",
+        "MCP_PORT",
+        "CANDIDATEASSESSMENT_*"
       ]
     },
     "dev": {

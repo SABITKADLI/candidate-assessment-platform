@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation';
-import { auth0, auth0Configured } from '@/lib/auth0';
+import { requireRecruiterSession } from '@/lib/requireAuth';
 import { Sidebar, Card } from '@cap/ui';
 import { NewSessionForm } from '@/lib/NewSessionForm';
 import { BackLink } from '@/lib/BackLink';
@@ -7,10 +6,7 @@ import { BackLink } from '@/lib/BackLink';
 export const dynamic = 'force-dynamic';
 
 export default async function NewSessionPage() {
-  if (auth0Configured) {
-    const session = await auth0.getSession();
-    if (!session) redirect('/');
-  }
+  await requireRecruiterSession();
 
   return (
     <div style={{ display: 'flex', minHeight: '100dvh' }}>

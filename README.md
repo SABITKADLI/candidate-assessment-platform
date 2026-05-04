@@ -29,7 +29,7 @@ candidate-assessment-platform/
 ## Auth Boundaries
 
 - **Candidate**: no login. `/s/[token]` validates an opaque `tok_` resume token against `app.sessions`, mints an `httpOnly` `cap_sess` cookie, and middleware gates every route behind it. Short-lived, non-transferable.
-- **Recruiter**: Auth0 v4 handles `/auth/*`. Middleware redirects unauthenticated requests on all non-public routes.
+- **Recruiter**: Auth0 v4 handles `/auth/*`. Server-rendered recruiter pages require a valid Auth0 session before reading database-backed admin data.
 - Apps run on separate ports (separate subdomains in production) — cookies never cross the boundary.
 
 ---
@@ -447,7 +447,7 @@ audit.audit_log         seq, actor, action, target, payload, prev_hash, hash  (t
 - [x] Session expiry cron
 
 #### Recruiter app
-- [x] Auth0 authentication (optional — falls back to dev mode)
+- [x] Auth0 authentication with server-side session guards on recruiter data pages
 - [x] Dashboard: live stats (total, completed, open flags, in-progress) + recent sessions table
 - [x] Sessions list
 - [x] Session detail: composite score, per-bucket bar chart, stage attempt table, proctoring flags, artifacts list, Claude memo
@@ -512,7 +512,8 @@ audit.audit_log         seq, actor, action, target, payload, prev_hash, hash  (t
 #### Infrastructure
 - [ ] **Database migrations** — schema changes are handled via `ensureXXXSchema()` runtime guards (`ALTER TABLE IF NOT EXISTS`). No formal migration system (Drizzle, Flyway, etc.). Not safe for production schema evolution.
 - [ ] **Always-on worker host** — worker containers build and boot locally, but production still needs a VPS/worker host running `docker-compose.workers.yml` continuously.
-- [ ] **CI/CD pipeline** — no GitHub Actions or automated lint/build/test on push.
+- [ ] **Direct-to-S3 artifact uploads** — current candidate upload routes proxy files through Next/Vercel functions. This is acceptable for small files only; resume/video/audio/liveness uploads need browser-to-S3 presigned upload URLs before real production use.
+- [ ] **CI/CD pipeline** — no GitHub Actions or automated lint/build/test on push. `pnpm lint` also needs a non-interactive ESLint config because `next lint` currently prompts and exits.
 - [ ] **S3 presign endpoint** — MCP server delegates to `S3_PRESIGN_URL` but that endpoint is not implemented in the recruiter app.
 
 #### Testing

@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
-import { auth0, auth0Configured } from '@/lib/auth0';
+import { auth0Configured } from '@/lib/auth0';
+import { requireRecruiterSession } from '@/lib/requireAuth';
 import { Sidebar, Card } from '@cap/ui';
 import { RescorePanel } from '@/lib/RescorePanel';
 
@@ -61,10 +61,7 @@ function ConfigCard({ title, rows }: { title: string; rows: { label: string; val
 }
 
 export default async function SettingsPage() {
-  if (auth0Configured) {
-    const session = await auth0.getSession();
-    if (!session) redirect('/');
-  }
+  await requireRecruiterSession();
 
   const configured = {
     auth0: auth0Configured,

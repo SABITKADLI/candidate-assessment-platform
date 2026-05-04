@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation';
-import { auth0, auth0Configured } from '@/lib/auth0';
+import { requireRecruiterSession } from '@/lib/requireAuth';
 import { sql } from '@cap/db';
 import { Sidebar, Button, Card } from '@cap/ui';
 import { Plus, Pencil } from 'lucide-react';
@@ -30,10 +29,7 @@ const TH: React.CSSProperties = {
 };
 
 export default async function RolesPage() {
-  if (auth0Configured) {
-    const session = await auth0.getSession();
-    if (!session) redirect('/');
-  }
+  await requireRecruiterSession();
 
   const roles = await sql<RoleRow[]>`
     SELECT id, name, description, stages_a, stages_b, created_at

@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const PUBLIC = [
   /^\/$/,
   /^\/api\/health$/,
+  /^\/api\/cron\/expire$/,
   /^\/api\/turnstile\/verify$/,
   /^\/s\/[A-Za-z0-9_-]+$/,
   /^\/s\/[A-Za-z0-9_-]+\/challenge$/,

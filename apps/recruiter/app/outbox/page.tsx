@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation';
-import { auth0, auth0Configured } from '@/lib/auth0';
+import { requireRecruiterSession } from '@/lib/requireAuth';
 import { sql } from '@cap/db';
 import { Sidebar, Card } from '@cap/ui';
 import { CheckCircle2, Clock, XCircle, AlertCircle, Send } from 'lucide-react';
@@ -37,10 +36,7 @@ const TH_STYLE = {
 };
 
 export default async function OutboxPage() {
-  if (auth0Configured) {
-    const session = await auth0.getSession();
-    if (!session) redirect('/');
-  }
+  await requireRecruiterSession();
 
   const rows = await sql<OutboxRow[]>`
     SELECT o.id, o.session_id, o.ats::text AS ats, o.status::text AS status,

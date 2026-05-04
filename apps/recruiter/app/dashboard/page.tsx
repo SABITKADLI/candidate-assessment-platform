@@ -1,4 +1,5 @@
-import { auth0, auth0Configured } from '@/lib/auth0';
+import { auth0Configured } from '@/lib/auth0';
+import { requireRecruiterSession } from '@/lib/requireAuth';
 import { sql } from '@cap/db';
 import { Sidebar, StatCard, Button, Card, StatusBadge } from '@cap/ui';
 import type { SessionStatus } from '@cap/shared/enums';
@@ -56,7 +57,7 @@ export default async function Dashboard() {
     );
   }
 
-  const authSession = await auth0.getSession();
+  const authSession = await requireRecruiterSession();
   const [counts] = await sql<{
     sessions: string; open_flags: string; completed_24h: string; in_progress: string;
   }[]>`

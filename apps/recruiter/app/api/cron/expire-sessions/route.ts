@@ -2,13 +2,15 @@ import { sql } from '@cap/db';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: Request) {
+async function expireSessions(req: Request) {
   const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = req.headers.get('authorization');
-    if (auth !== `Bearer ${secret}`) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  if (!secret) {
+    return Response.json({ error: 'CRON_SECRET not configured' }, { status: 503 });
+  }
+
+  const auth = req.headers.get('authorization');
+  if (auth !== `Bearer ${secret}`) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
@@ -22,4 +24,12 @@ export async function POST(req: Request) {
     console.error('[cron] expire-sessions failed:', e);
     return Response.json({ ok: false, error: String(e) }, { status: 500 });
   }
+}
+
+export async function GET(req: Request) {
+  return expireSessions(req);
+}
+
+export async function POST(req: Request) {
+  return expireSessions(req);
 }

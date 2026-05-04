@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation';
-import { auth0, auth0Configured } from '@/lib/auth0';
+import { requireRecruiterSession } from '@/lib/requireAuth';
 import { sql } from '@cap/db';
 import { Sidebar, StatusBadge, Button, Card } from '@cap/ui';
 import type { SessionStatus, StageGroup } from '@cap/shared/enums';
@@ -131,10 +130,7 @@ const TH_STYLE = {
 };
 
 export default async function SessionsPage() {
-  if (auth0Configured) {
-    const session = await auth0.getSession();
-    if (!session) redirect('/');
-  }
+  await requireRecruiterSession();
 
   const sessions = await sql<SessionRow[]>`
     SELECT s.id, c.email, s.stage::text AS stage, s.status::text AS status,

@@ -1,5 +1,5 @@
-import { redirect, notFound } from 'next/navigation';
-import { auth0, auth0Configured } from '@/lib/auth0';
+import { notFound } from 'next/navigation';
+import { requireRecruiterSession } from '@/lib/requireAuth';
 import { sql } from '@cap/db';
 import { Sidebar, StatusBadge, FlagBadge, Card, ProgressBar } from '@cap/ui';
 import { BackLink } from '@/lib/BackLink';
@@ -184,10 +184,7 @@ export default async function SessionDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  if (auth0Configured) {
-    const session = await auth0.getSession();
-    if (!session) redirect('/');
-  }
+  await requireRecruiterSession();
 
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
