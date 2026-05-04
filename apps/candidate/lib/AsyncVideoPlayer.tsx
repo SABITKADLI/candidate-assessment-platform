@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@cap/ui';
+import { uploadArtifactDirect } from './direct-upload';
 
 type Phase = 'intro' | 'prep' | 'recording' | 'preview' | 'uploading' | 'done' | 'error';
 
@@ -15,6 +16,7 @@ export function AsyncVideoPlayer() {
   const [recTimer, setRecTimer] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [uploadPct, setUploadPct] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -84,20 +86,21 @@ export function AsyncVideoPlayer() {
   async function upload() {
     const blob = blobRef.current;
     if (!blob) return;
+    setUploadPct(0);
     setPhase('uploading');
 
-    const form = new FormData();
-    form.append('video', blob, 'response.webm');
-    const upRes = await fetch('/api/stages/b_async_video/upload', {
-      method: 'POST', credentials: 'same-origin', body: form,
-    });
-    if (!upRes.ok) {
-      const j = await upRes.json().catch(() => ({})) as { error?: string };
-      setErrorMsg(j.error ?? `Upload failed: HTTP ${upRes.status}`);
+    const artifact_id = await uploadArtifactDirect({
+      kind: 'async_video',
+      blob,
+      filename: 'response.webm',
+      mimeType: blob.type || 'video/webm',
+      onProgress: setUploadPct,
+    }).catch((e: unknown) => {
+      setErrorMsg(e instanceof Error ? e.message : 'Upload failed');
       setPhase('error');
-      return;
-    }
-    const { artifact_id } = await upRes.json() as { artifact_id: string };
+      return null;
+    });
+    if (!artifact_id) return;
 
     const completeRes = await fetch('/api/stages/complete', {
       method: 'POST',
@@ -117,7 +120,7 @@ export function AsyncVideoPlayer() {
   }
 
   if (phase === 'done') return <Status tone="success">Video saved. Continuing…</Status>;
-  if (phase === 'uploading') return <Status>Uploading your response…</Status>;
+  if (phase === 'uploading') return <Status>Uploading your response… {uploadPct}%</Status>;
   if (phase === 'error') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

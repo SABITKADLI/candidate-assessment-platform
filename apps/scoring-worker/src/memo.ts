@@ -22,7 +22,7 @@ function anthropic(): Anthropic {
 let _s3: S3Client | null = null;
 function s3(): S3Client {
   if (_s3) return _s3;
-  _s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' });
+  _s3 = new S3Client({ region: process.env.AWS_REGION ?? 'eu-north-1' });
   return _s3;
 }
 

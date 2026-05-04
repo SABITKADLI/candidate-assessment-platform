@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@cap/ui';
+import { uploadArtifactDirect } from './direct-upload';
 
 type Phase = 'intro' | 'recording' | 'preview' | 'uploading' | 'done' | 'error';
 
@@ -13,6 +14,7 @@ export function VerbalPlayer() {
   const [recTimer, setRecTimer] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [uploadPct, setUploadPct] = useState(0);
 
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -68,22 +70,22 @@ export function VerbalPlayer() {
   async function upload() {
     const blob = blobRef.current;
     if (!blob) return;
+    setUploadPct(0);
     setPhase('uploading');
 
     const ext = blob.type.includes('ogg') ? 'ogg' : 'webm';
-    const form = new FormData();
-    form.append('audio', blob, `response.${ext}`);
-
-    const upRes = await fetch('/api/stages/b_verbal/upload', {
-      method: 'POST', credentials: 'same-origin', body: form,
-    });
-    if (!upRes.ok) {
-      const j = await upRes.json().catch(() => ({})) as { error?: string };
-      setErrorMsg(j.error ?? `Upload failed: HTTP ${upRes.status}`);
+    const artifact_id = await uploadArtifactDirect({
+      kind: 'verbal_audio',
+      blob,
+      filename: `response.${ext}`,
+      mimeType: blob.type || 'audio/webm',
+      onProgress: setUploadPct,
+    }).catch((e: unknown) => {
+      setErrorMsg(e instanceof Error ? e.message : 'Upload failed');
       setPhase('error');
-      return;
-    }
-    const { artifact_id } = await upRes.json() as { artifact_id: string };
+      return null;
+    });
+    if (!artifact_id) return;
 
     const completeRes = await fetch('/api/stages/complete', {
       method: 'POST',
@@ -103,7 +105,7 @@ export function VerbalPlayer() {
   }
 
   if (phase === 'done') return <Status tone="success">Response saved. Continuing…</Status>;
-  if (phase === 'uploading') return <Status>Uploading your response…</Status>;
+  if (phase === 'uploading') return <Status>Uploading your response… {uploadPct}%</Status>;
   if (phase === 'error') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

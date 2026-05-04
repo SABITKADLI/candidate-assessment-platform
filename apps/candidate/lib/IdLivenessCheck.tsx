@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@cap/ui';
+import { uploadArtifactDirect } from './direct-upload';
 
 // Random liveness challenges — simple action prompts the candidate performs live.
 const CHALLENGES = [
@@ -114,16 +115,23 @@ export function IdLivenessCheck() {
     if (!idBlob || !livenessBlob) return;
     setStep('uploading');
 
-    const fd = new FormData();
-    fd.append('id_photo', new File([idBlob], 'id_photo.jpg', { type: 'image/jpeg' }));
-    fd.append('liveness_frame', new File([livenessBlob], 'liveness_frame.jpg', { type: 'image/jpeg' }));
-
-    const uploadRes = await fetch('/api/stages/a_id_liveness/upload', {
-      method: 'POST', credentials: 'same-origin', body: fd,
-    });
-    if (!uploadRes.ok) {
-      const j = await uploadRes.json().catch(() => ({})) as { error?: string };
-      setError(j.error ?? `Upload failed (HTTP ${uploadRes.status})`);
+    try {
+      await Promise.all([
+        uploadArtifactDirect({
+          kind: 'id_photo',
+          blob: idBlob,
+          filename: 'id_photo.jpg',
+          mimeType: 'image/jpeg',
+        }),
+        uploadArtifactDirect({
+          kind: 'liveness_frame',
+          blob: livenessBlob,
+          filename: 'liveness_frame.jpg',
+          mimeType: 'image/jpeg',
+        }),
+      ]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Upload failed');
       setStep('error');
       return;
     }
@@ -204,6 +212,7 @@ export function IdLivenessCheck() {
       {step === 'id_preview' && idPreviewUrl && (
         <>
           <Instruction>Does your ID appear clear and readable?</Instruction>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={idPreviewUrl} alt="ID photo preview"
             style={{ borderRadius: 'var(--cap-radius-md)', border: '1px solid var(--cap-border)', maxWidth: '100%' }} />
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -236,6 +245,7 @@ export function IdLivenessCheck() {
       {step === 'liveness_preview' && livenessPreviewUrl && (
         <>
           <Instruction>Does this frame look correct?</Instruction>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={livenessPreviewUrl} alt="Liveness frame preview"
             style={{ borderRadius: 'var(--cap-radius-md)', border: '1px solid var(--cap-border)', maxWidth: '100%' }} />
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

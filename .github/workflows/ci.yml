@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cap
+      REDIS_URL: redis://localhost:6379
+      AUTH0_DOMAIN: example.us.auth0.com
+      AUTH0_CLIENT_ID: ci-client
+      AUTH0_CLIENT_SECRET: ci-secret
+      AUTH0_SECRET: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      APP_BASE_URL: http://localhost:3001
+      NEXT_PUBLIC_CANDIDATE_BASE_URL: http://localhost:3000
+      CRON_SECRET: ci-cron-secret
+      AWS_REGION: us-east-1
+      S3_BUCKET: ci-bucket
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.11
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.12.0 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+
+      - name: Validate worker compose
+        run: docker compose -f docker-compose.workers.yml --profile all config --quiet

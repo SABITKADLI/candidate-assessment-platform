@@ -28,38 +28,10 @@ export type EmailSummary = {
   clicked: boolean;
 };
 
-let schemaReady = false;
-
-export async function ensureEmailLogSchema(): Promise<void> {
-  if (schemaReady) return;
-  await sql`
-    CREATE TABLE IF NOT EXISTS app.email_log (
-      id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-      session_id  uuid,
-      to_email    text        NOT NULL,
-      resend_id   text,
-      status      text        NOT NULL DEFAULT 'queued',
-      attempts    int         NOT NULL DEFAULT 0,
-      last_error  text,
-      opened_at   timestamptz,
-      clicked_at  timestamptz,
-      created_at  timestamptz NOT NULL DEFAULT now(),
-      updated_at  timestamptz NOT NULL DEFAULT now()
-    )
-  `;
-  // Safe to run on existing installs — ADD COLUMN IF NOT EXISTS is idempotent.
-  await sql`ALTER TABLE app.email_log ADD COLUMN IF NOT EXISTS opened_at  timestamptz`;
-  await sql`ALTER TABLE app.email_log ADD COLUMN IF NOT EXISTS clicked_at timestamptz`;
-  await sql`CREATE INDEX IF NOT EXISTS email_log_session_idx   ON app.email_log (session_id)`;
-  await sql`CREATE INDEX IF NOT EXISTS email_log_resend_id_idx ON app.email_log (resend_id) WHERE resend_id IS NOT NULL`;
-  schemaReady = true;
-}
-
 export async function createEmailLogEntry(
   sessionId: string | null,
   toEmail: string,
 ): Promise<string> {
-  await ensureEmailLogSchema();
   const [row] = await sql<{ id: string }[]>`
     INSERT INTO app.email_log (session_id, to_email)
     VALUES (${sessionId ? sql`${sessionId}::uuid` : null}, ${toEmail})
@@ -90,7 +62,6 @@ export async function updateEmailStatusByResendId(
   resendId: string,
   status: EmailStatus,
 ): Promise<void> {
-  await ensureEmailLogSchema();
   await sql`
     UPDATE app.email_log
     SET status = ${status}, updated_at = now()
@@ -99,7 +70,6 @@ export async function updateEmailStatusByResendId(
 }
 
 export async function markEmailOpened(resendId: string): Promise<void> {
-  await ensureEmailLogSchema();
   await sql`
     UPDATE app.email_log
     SET opened_at = COALESCE(opened_at, now()), updated_at = now()
@@ -108,7 +78,6 @@ export async function markEmailOpened(resendId: string): Promise<void> {
 }
 
 export async function markEmailClicked(resendId: string): Promise<void> {
-  await ensureEmailLogSchema();
   await sql`
     UPDATE app.email_log
     SET clicked_at = COALESCE(clicked_at, now()), updated_at = now()
@@ -117,7 +86,6 @@ export async function markEmailClicked(resendId: string): Promise<void> {
 }
 
 export async function getEmailLogForSession(sessionId: string): Promise<EmailLogRow[]> {
-  await ensureEmailLogSchema();
   return sql<EmailLogRow[]>`
     SELECT id, session_id::text AS session_id, to_email, resend_id,
            status, attempts, last_error, opened_at, clicked_at,
@@ -134,7 +102,6 @@ export async function getEmailStatusesForSessions(
 ): Promise<Record<string, EmailSummary>> {
   if (!sessionIds.length) return {};
   try {
-    await ensureEmailLogSchema();
     const rows = await sql<{
       session_id: string;
       status: EmailStatus;

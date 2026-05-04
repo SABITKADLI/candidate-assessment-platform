@@ -214,7 +214,7 @@ Flags lower the composite via `proctoring_mult` (floor 0.5×). Recruiters resolv
 | `REDIS_URL` | Yes | BullMQ queues |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | No | Turnstile widget |
 | `TURNSTILE_SECRET_KEY` | No | Turnstile server verify |
-| `S3_BUCKET` / `AWS_REGION` / `AWS_*` | No | Resume + artifact storage |
+| `S3_BUCKET` / `AWS_REGION` / `AWS_*` | Yes in prod | Direct resume, liveness, video, and audio uploads |
 | `NEXT_PUBLIC_CANDIDATE_BASE_URL` | No | Base URL for invite links |
 
 ### `apps/recruiter`
@@ -311,7 +311,10 @@ cp .env.example apps/candidate/.env.local
 cp .env.example apps/recruiter/.env.local
 
 # Apply DB migrations
-for f in db/migrations/*.sql; do psql -d cap_dev -f "$f"; done
+pnpm db:migrate
+
+# Check DB migration status
+pnpm db:migrate:status
 
 # Dev mode (candidate + recruiter)
 pnpm dev
@@ -397,6 +400,77 @@ always-on VPS or worker platform with Docker support. Queue names are fixed in
 
 ---
 
+## Direct S3 Uploads
+
+Candidate files upload directly from the browser to S3 using presigned `PUT`
+URLs. This keeps video/audio/resume payloads out of Vercel Functions and avoids
+the platform request body limit. The candidate app only presigns and records the
+completed artifact.
+
+Required candidate Vercel env:
+
+```env
+AWS_REGION=eu-north-1
+S3_BUCKET=cap-assessment-prod-sabitkadli
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+```
+
+The same S3 env must also exist on the scoring worker so assessment memos can be
+uploaded to S3. The IAM user/key needs object access on the production bucket:
+`s3:PutObject` and `s3:GetObject` on `arn:aws:s3:::cap-assessment-prod-sabitkadli/*`.
+`s3:ListBucket` is only needed for manual/debug listing.
+
+Set bucket CORS to allow the browser upload headers:
+
+```json
+[
+  {
+    "AllowedOrigins": [
+      "https://assessment.sabitkadli.com",
+      "http://localhost:3000"
+    ],
+    "AllowedMethods": ["PUT", "HEAD", "GET"],
+    "AllowedHeaders": [
+      "Content-Type",
+      "x-amz-checksum-sha256",
+      "x-amz-meta-sha256",
+      "x-amz-meta-session-id",
+      "x-amz-meta-upload-kind"
+    ],
+    "ExposeHeaders": ["ETag", "x-amz-checksum-sha256"],
+    "MaxAgeSeconds": 3000
+  }
+]
+```
+
+Upload flow:
+
+1. Browser hashes the file and asks `/api/uploads/presign` for a short-lived S3 URL.
+2. Browser sends the file directly to S3 with checksum and metadata headers.
+3. Browser calls `/api/uploads/complete`; the candidate app verifies the S3 object with `HeadObject` and writes `app.artifacts`.
+
+Legacy multipart upload routes now return `410 direct_upload_required`.
+
+---
+
+## Database Migrations
+
+SQL migrations live in `db/migrations` and are applied in filename order by
+`packages/db/scripts/migrate.mjs`. Every migration should be wrapped in explicit
+`BEGIN` / `COMMIT` statements.
+
+```bash
+pnpm db:migrate:status
+pnpm db:migrate
+```
+
+The runner creates `app.schema_migrations`, stores checksums, and refuses to run
+if an already-applied migration file changes. Runtime schema guards have been
+removed from recruiter routes; schema changes should go through migrations.
+
+---
+
 ## Database Schema (key tables)
 
 ```
@@ -428,6 +502,8 @@ audit.audit_log         seq, actor, action, target, payload, prev_hash, hash  (t
 - [x] Cloudflare Turnstile bot gate
 - [x] Production worker Dockerfiles and `docker-compose.workers.yml`
 - [x] Worker env template (`workers.env.example`) and secret-safe Docker ignore rules
+- [x] Formal SQL migration runner with checksum tracking (`pnpm db:migrate`)
+- [x] GitHub Actions CI for lint, tests, typecheck, build, and worker compose validation
 
 #### Candidate app
 - [x] Middleware session routing (resume token → next stage)
@@ -438,7 +514,8 @@ audit.audit_log         seq, actor, action, target, payload, prev_hash, hash  (t
 - [x] AntibotBoot fingerprinting on every stage
 - [x] GmaPlayer — timed test, server-side question bank + shuffle, grading
 - [x] CodingPlayer — code submission to sandbox queue
-- [x] ResumeUploader — drag-and-drop PDF/DOCX, S3 upload, progress indicator
+- [x] ResumeUploader — drag-and-drop PDF/DOCX, direct S3 upload, progress indicator
+- [x] Resume/liveness/video/audio direct-to-S3 uploads via presigned URLs
 - [x] Stage completion API — timing flags, attention-check flags, scoring enqueue
 - [x] B_CODING + B_DEBUG submit routes → sandbox queue
 - [x] A_GMA next-question route (server-side item bank)
@@ -510,14 +587,11 @@ audit.audit_log         seq, actor, action, target, payload, prev_hash, hash  (t
 - [ ] **Live ATS delivery** — the outbox loop, payload builder, and HMAC signing are implemented. Actual Greenhouse / Lever / Workday endpoints + credentials (`ATS_*_URL`, `ATS_*_SECRET`) need to be provisioned and tested against live accounts.
 
 #### Infrastructure
-- [ ] **Database migrations** — schema changes are handled via `ensureXXXSchema()` runtime guards (`ALTER TABLE IF NOT EXISTS`). No formal migration system (Drizzle, Flyway, etc.). Not safe for production schema evolution.
 - [ ] **Always-on worker host** — worker containers build and boot locally, but production still needs a VPS/worker host running `docker-compose.workers.yml` continuously.
-- [ ] **Direct-to-S3 artifact uploads** — current candidate upload routes proxy files through Next/Vercel functions. This is acceptable for small files only; resume/video/audio/liveness uploads need browser-to-S3 presigned upload URLs before real production use.
-- [ ] **CI/CD pipeline** — no GitHub Actions or automated lint/build/test on push. `pnpm lint` also needs a non-interactive ESLint config because `next lint` currently prompts and exits.
 - [ ] **S3 presign endpoint** — MCP server delegates to `S3_PRESIGN_URL` but that endpoint is not implemented in the recruiter app.
 
 #### Testing
-- [ ] **Unit tests** — no test files in any app or package.
+- [ ] **Broader unit tests** — basic Node tests cover upload contracts and migration files; route/component logic still needs coverage.
 - [ ] **Integration tests** — no test setup or fixtures.
 - [ ] **E2E tests** — no Playwright or Cypress.
 

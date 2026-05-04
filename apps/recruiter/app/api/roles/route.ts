@@ -6,27 +6,6 @@ import { auth0, auth0Configured } from '@/lib/auth0';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// Idempotent — adds columns that may not exist on older installs.
-async function ensureRolesSchema(): Promise<void> {
-  await sql`
-    CREATE TABLE IF NOT EXISTS app.roles (
-      id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-      name            text        NOT NULL,
-      description     text,
-      stages_a        text[],
-      stages_b        text[],
-      stage_weights   jsonb,
-      weights_version int         NOT NULL DEFAULT 1,
-      created_at      timestamptz NOT NULL DEFAULT now(),
-      updated_at      timestamptz NOT NULL DEFAULT now()
-    )
-  `;
-  // Safely add columns that existing installs may be missing.
-  await sql`ALTER TABLE app.roles ADD COLUMN IF NOT EXISTS description text`;
-  await sql`ALTER TABLE app.roles ADD COLUMN IF NOT EXISTS stages_a text[]`;
-  await sql`ALTER TABLE app.roles ADD COLUMN IF NOT EXISTS stages_b text[]`;
-}
-
 const zRole = z.object({
   name: z.string().min(1).max(120),
   description: z.string().max(1000).optional(),
@@ -40,7 +19,6 @@ export async function GET(req: NextRequest) {
     const session = await auth0.getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  await ensureRolesSchema();
 
   const roles = await sql<{
     id: string; name: string; description: string | null;
@@ -61,7 +39,6 @@ export async function POST(req: NextRequest) {
     const session = await auth0.getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  await ensureRolesSchema();
 
   const body = await req.json().catch(() => null);
   const parsed = zRole.safeParse(body);

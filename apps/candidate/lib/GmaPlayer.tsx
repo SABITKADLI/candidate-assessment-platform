@@ -65,7 +65,7 @@ export function GmaPlayer({ token }: { token: string }) {
     } catch (e) {
       setUi({ phase: 'error', detail: String(e) });
     }
-  }, []);
+  }, [token]);
 
   // Initial fetch.
   useEffect(() => { void step(); }, [step]);

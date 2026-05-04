@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { Button } from '@cap/ui';
+import { uploadArtifactDirect } from './direct-upload';
 
 type Phase =
   | { kind: 'idle' }
@@ -38,27 +39,12 @@ export function ResumeUploader() {
     if (!file || !consented) return;
     setPhase({ kind: 'uploading', pct: 0 });
 
-    // XHR so we get upload progress.
-    const artifactId = await new Promise<string>((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/stages/a_resume/upload');
-      xhr.withCredentials = true;
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable)
-          setPhase({ kind: 'uploading', pct: Math.round((e.loaded / e.total) * 100) });
-      };
-      xhr.onload = () => {
-        const j = JSON.parse(xhr.responseText) as { ok?: boolean; artifact_id?: string; error?: string; detail?: string };
-        if (xhr.status >= 400 || !j.ok) {
-          reject(new Error(j.detail ?? j.error ?? `HTTP ${xhr.status}`));
-        } else {
-          resolve(j.artifact_id!);
-        }
-      };
-      xhr.onerror = () => reject(new Error('Network error'));
-      const fd = new FormData();
-      fd.append('resume', file);
-      xhr.send(fd);
+    const artifactId = await uploadArtifactDirect({
+      kind: 'resume',
+      blob: file,
+      filename: file.name,
+      mimeType: file.type,
+      onProgress: (pct) => setPhase({ kind: 'uploading', pct }),
     }).catch((e: unknown) => {
       setPhase({ kind: 'error', msg: String(e instanceof Error ? e.message : e) });
       return null;
