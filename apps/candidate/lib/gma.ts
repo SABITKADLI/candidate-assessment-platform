@@ -150,8 +150,7 @@ export async function nextStep({ sessionId, answer }: NextInput): Promise<GmaNex
     await completeStage({
       session_id: sessionId,
       stage_key: 'A_GMA',
-      payload: { gma_summary: { correct, total, expired, finished_at: now.toISOString() } },
-      score,
+      payload: { gma_summary: { score, correct, total, expired, finished_at: now.toISOString() } },
       duration_s: Math.max(1, Math.round((now.getTime() - new Date(progress.started_at).getTime()) / 1000)),
     });
     return { kind: 'done', score, correct, total };

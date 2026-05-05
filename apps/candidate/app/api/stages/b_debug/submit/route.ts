@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { randomUUID } from 'crypto';
 import { sql, auditLog } from '@cap/db';
-import { enqueueSandbox } from '@/lib/queues';
+import { enqueueSandbox, enqueueStageScore } from '@/lib/queues';
 import { B_DEBUG_PROBLEM } from '@/lib/coding-problems';
 import { rateLimit } from '@/lib/rate-limit';
 import { z } from 'zod';
@@ -57,17 +57,19 @@ async function handlePost(req: Request) {
 
   const attempts = await sql<Array<{ id: string }>>`
     INSERT INTO app.stage_attempts (
-      session_id, stage_key, attempt_no, raw_payload, started_at
+      session_id, stage_key, attempt_no, raw_payload, started_at, scoring_status, scoring_error
     ) VALUES (
       ${sid}::uuid, 'B_DEBUG'::app.stage_key, 1,
       ${sql.json({ code, language, problem_id: problem.id }) as never},
-      now()
+      now(), 'queued', NULL
     )
     ON CONFLICT (session_id, stage_key, attempt_no) DO UPDATE
       SET raw_payload  = app.stage_attempts.raw_payload || EXCLUDED.raw_payload,
           score        = NULL,
           duration_s   = NULL,
-          started_at   = COALESCE(app.stage_attempts.started_at, EXCLUDED.started_at)
+          started_at   = COALESCE(app.stage_attempts.started_at, EXCLUDED.started_at),
+          scoring_status = 'queued',
+          scoring_error = NULL
     RETURNING id
   `;
   const attempt = attempts[0];
@@ -106,7 +108,9 @@ async function handlePost(req: Request) {
   await sql`
     UPDATE app.stage_attempts
        SET completed_at = now(),
-           raw_payload = raw_payload || ${sql.json({ sandbox_job_id: sandboxJobId } as never)}
+           raw_payload = raw_payload || ${sql.json({ sandbox_job_id: sandboxJobId } as never)},
+           scoring_status = 'queued',
+           scoring_error = NULL
      WHERE id = ${attempt.id}::uuid
   `;
 
@@ -130,6 +134,17 @@ async function handlePost(req: Request) {
     stage_key: 'B_DEBUG',
     stage_group_done: doneRows[0]?.done ?? false,
     sandbox_job_id: sandboxJobId,
+  });
+
+  const stageScoreJobId = await enqueueStageScore({
+    stage_attempt_id: attempt.id,
+    session_id: sid,
+    stage_key: 'B_DEBUG',
+    reason: 'stage_completed',
+  });
+  await auditLog('candidate-app', 'stage_score.enqueue', `stage_attempt:${attempt.id}`, {
+    stage_key: 'B_DEBUG',
+    job_id: stageScoreJobId,
   });
 
   return Response.json({ ok: true, sandbox_job_id: sandboxJobId });

@@ -120,7 +120,7 @@ Internal Next.js app. Requires Auth0 and DATABASE_URL.
 BullMQ worker. Triggered by stage completions or manual rescore.
 
 **Pipeline per job:**
-1. `scoreUnscored()` — stage-specific scorers (Claude API for `B_WORK_SAMPLE`; artifact presence for `B_ASYNC_VIDEO`/`B_VERBAL`; presence=100 for `A_RESUME`/`A_ID_LIVENESS`)
+1. `stage-score` queue — AI-first per-stage grading inside `scoring-worker` (deterministic stages stay mechanical; judgement stages use primary + verifier runs)
 2. `computeComposite()` — weighted bucket average × proctoring multiplier, persisted to `app.scores`
 3. `generateMemo()` — Claude markdown memo with recommendation (`advance` / `hold` / `decline`), uploaded to S3
 4. `enqueueAts()` — builds Greenhouse / Lever / Workday payloads, inserts into `app.ats_outbox`
@@ -544,7 +544,7 @@ audit.audit_log         seq, actor, action, target, payload, prev_hash, hash  (t
 - [x] CodingPlayer — code submission to sandbox queue
 - [x] ResumeUploader — drag-and-drop PDF/DOCX, direct S3 upload, progress indicator
 - [x] Resume/liveness/video/audio direct-to-S3 uploads via presigned URLs
-- [x] Stage completion API — server-side validation/scoring, timing flags, attention-check flags, scoring enqueue
+- [x] Stage completion API — server-side validation, timing flags, attention-check flags, stage-score enqueue
 - [x] B_CODING + B_DEBUG submit routes → sandbox queue
 - [x] A_GMA next-question route (server-side item bank)
 - [x] Turnstile verify route

@@ -1,6 +1,12 @@
 import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
-import { SCORING_QUEUE, SANDBOX_QUEUE, type ScoringJob } from '@cap/shared/queues';
+import {
+  SCORING_QUEUE,
+  SANDBOX_QUEUE,
+  STAGE_SCORE_QUEUE,
+  type ScoringJob,
+  type StageScoreJob,
+} from '@cap/shared/queues';
 import type { Language } from './coding-problems';
 
 // Lazy singletons. If REDIS_URL is missing we return a no-op that logs a
@@ -50,6 +56,8 @@ export interface SandboxJobData {
 declare global {
   // eslint-disable-next-line no-var
   var __cap_sandbox_queue: Queue<SandboxJobData> | null | undefined;
+  // eslint-disable-next-line no-var
+  var __cap_stage_score_queue: Queue<StageScoreJob> | null | undefined;
 }
 
 function makeSandboxQueue(): Queue<SandboxJobData> | null {
@@ -94,6 +102,38 @@ export async function enqueueScoring(job: ScoringJob): Promise<string | null> {
     jobId,
     removeOnComplete: { age: 3600, count: 1000 },
     removeOnFail: { age: 24 * 3600 },
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 5_000 },
+  });
+  return jobId;
+}
+
+// Stage-score queue consumed by the scoring-worker grader engine.
+function makeStageScoreQueue(): Queue<StageScoreJob> | null {
+  const url = process.env.REDIS_URL;
+  if (!url) {
+    console.warn('[queues] REDIS_URL unset - stage-score jobs will not be enqueued');
+    return null;
+  }
+  const connection = globalThis.__cap_scoring_redis
+    ?? (globalThis.__cap_scoring_redis = new Redis(url, { maxRetriesPerRequest: null }));
+  return new Queue<StageScoreJob>(process.env.STAGE_SCORE_QUEUE ?? STAGE_SCORE_QUEUE, { connection });
+}
+
+export function getStageScoreQueue(): Queue<StageScoreJob> | null {
+  if (globalThis.__cap_stage_score_queue !== undefined) return globalThis.__cap_stage_score_queue;
+  globalThis.__cap_stage_score_queue = makeStageScoreQueue();
+  return globalThis.__cap_stage_score_queue;
+}
+
+export async function enqueueStageScore(job: StageScoreJob): Promise<string | null> {
+  const q = getStageScoreQueue();
+  if (!q) return null;
+  const jobId = `stage-score-${job.stage_attempt_id}-${Date.now()}`;
+  await q.add('grade', job, {
+    jobId,
+    removeOnComplete: { age: 3600 * 24, count: 5000 },
+    removeOnFail: { age: 3600 * 48 },
     attempts: 3,
     backoff: { type: 'exponential', delay: 5_000 },
   });

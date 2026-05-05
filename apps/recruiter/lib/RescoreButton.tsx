@@ -28,13 +28,13 @@ export function RescoreButton({ sessionId }: { sessionId: string }) {
         method: 'POST',
         credentials: 'same-origin',
       });
-      const json = await res.json() as { ok?: boolean; error?: string; composite?: number; recommendation?: string };
+      const json = await res.json() as { ok?: boolean; error?: string; composite?: number | null; recommendation?: string };
       if (!res.ok || json.error) {
         setError(json.error ?? `HTTP ${res.status}`);
         setStatus('error');
         return;
       }
-      setResult({ composite: json.composite!, recommendation: json.recommendation! });
+      setResult({ composite: json.composite ?? 0, recommendation: json.recommendation ?? 'queued' });
       setStatus('done');
       setTimeout(() => window.location.reload(), 1400);
     } catch (e) {

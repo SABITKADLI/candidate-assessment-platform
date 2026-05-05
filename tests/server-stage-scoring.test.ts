@@ -13,8 +13,8 @@ test('server re-scores Big5 from raw answers', () => {
 
   const result = scoreStageOnServer('A_BIG5', { answers, score: 0 });
 
-  assert.equal(typeof result.score, 'number');
-  assert.notEqual(result.score, 0);
+  assert.equal(typeof result.payload.mechanical_score, 'number');
+  assert.notEqual(result.payload.mechanical_score, 0);
   assert.equal(result.payload.scoring_source, 'server');
   assert.deepEqual(result.payload.attention_check_failures, []);
 });
@@ -24,7 +24,7 @@ test('server derives legacy Big5 answers from item payloads', () => {
 
   const result = scoreStageOnServer('A_BIG5', { items, score: 100 });
 
-  assert.equal(typeof result.score, 'number');
+  assert.equal(typeof result.payload.mechanical_score, 'number');
   assert.equal(result.payload.scoring_source, 'server');
 });
 
@@ -41,8 +41,8 @@ test('server re-scores MBTI, SJT, and integrity from raw answers', () => {
   const integrityAnswers = Object.fromEntries(INTEGRITY_ITEMS.map((item) => [item.id, 4]));
 
   assert.equal(scoreStageOnServer('A_MBTI', { answers: mbtiAnswers }).payload.scoring_source, 'server');
-  assert.equal(typeof scoreStageOnServer('A_SJT', { answers: sjtAnswers }).score, 'number');
-  assert.equal(typeof scoreStageOnServer('A_INTEGRITY', { answers: integrityAnswers }).score, 'number');
+  assert.equal(typeof scoreStageOnServer('A_SJT', { answers: sjtAnswers }).payload.mechanical_score, 'number');
+  assert.equal(typeof scoreStageOnServer('A_INTEGRITY', { answers: integrityAnswers }).payload.mechanical_score, 'number');
 });
 
 test('Rorschach is completion-scored with minimum response validation', () => {
@@ -52,8 +52,7 @@ test('Rorschach is completion-scored with minimum response validation', () => {
 
   const result = scoreStageOnServer('A_RORSCHACH', { responses });
 
-  assert.equal(result.score, 100);
-  assert.equal(result.payload.scoring_policy, 'completion_only_minimum_response');
+  assert.equal(result.payload.scoring_policy, 'ai_graded_after_minimum_response_validation');
 });
 
 test('work sample word count is server-validated', () => {
@@ -61,7 +60,6 @@ test('work sample word count is server-validated', () => {
 
   const result = scoreStageOnServer('B_WORK_SAMPLE', { text, word_count: 999 });
 
-  assert.equal(result.score, undefined);
   assert.equal(result.payload.word_count, 55);
   assert.equal(result.payload.scoring_source, 'server_validated_worker_scored');
 });

@@ -19,6 +19,8 @@
     "@cap/db": "workspace:*",
     "@cap/shared": "workspace:*",
     "@cap/ui": "workspace:*",
+    "bullmq": "^5.21.2",
+    "ioredis": "^5.4.1",
     "lucide-react": "^1.11.0",
     "next": "^15.5.0",
     "react": "^19.0.0",

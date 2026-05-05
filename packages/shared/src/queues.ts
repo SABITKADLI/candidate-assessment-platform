@@ -13,3 +13,21 @@ export interface ScoringJob {
 }
 
 export const SANDBOX_QUEUE = 'sandbox-runs';
+
+export const STAGE_SCORE_QUEUE = 'stage-score';
+export const SANDBOX_DONE_QUEUE = 'sandbox-done';
+export const SESSION_FINALIZE_QUEUE = SCORING_QUEUE;
+
+export interface StageScoreJob {
+  stage_attempt_id: string;
+  session_id: string;
+  stage_key: string;
+  reason?: 'stage_completed' | 'sandbox_done' | 'manual_rescore' | 'transcribe_poll' | 'calibration';
+  transcribe_job?: string;
+}
+
+export interface SandboxDoneJob {
+  stage_attempt_id: string;
+  session_id: string;
+  stage_key: string;
+}

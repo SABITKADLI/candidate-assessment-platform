@@ -547,7 +547,26 @@ export default async function SessionDetailPage({
               )}
             </div>
           </div>
-          <RescoreButton sessionId={sessionRow.id} />
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <a
+              href={`/sessions/${sessionRow.id}/grading`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '6px 12px',
+                borderRadius: 'var(--cap-radius-md)',
+                border: '1px solid var(--cap-border)',
+                color: 'var(--cap-accent)',
+                background: 'var(--cap-accent-surface)',
+                textDecoration: 'none',
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              Grading
+            </a>
+            <RescoreButton sessionId={sessionRow.id} />
+          </div>
         </header>
 
         {/* Score */}

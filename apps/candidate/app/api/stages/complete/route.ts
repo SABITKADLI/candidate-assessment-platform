@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { sql, auditLog } from '@cap/db';
 import { zStageKey, STAGE_GROUP_OF, type StageGroup, type StageKey } from '@cap/shared';
-import { enqueueScoring } from '@/lib/queues';
+import { enqueueStageScore } from '@/lib/queues';
 import { rateLimit } from '@/lib/rate-limit';
 import { StageScoringError, scoreStageOnServer } from '@/lib/server-stage-scoring';
 import { z } from 'zod';
@@ -12,17 +12,9 @@ export const runtime = 'nodejs';
 const zBody = z.object({
   stage_key: zStageKey,
   payload: z.record(z.string(), z.unknown()).default({}),
-  // Backward-compatible only: public callers may send this, but server-side
-  // scoring below is authoritative for all self-scored stages.
   score: z.number().min(0).max(100).optional(),
   duration_s: z.number().int().min(0).optional(),
 });
-
-// Stages that are binary pass/fail — completing them earns full credit.
-const PRESENCE_SCORES: Partial<Record<StageKey, number>> = {
-  A_RESUME: 100,
-  A_ID_LIVENESS: 100,
-};
 
 const DEFAULT_STAGE_A: StageKey[] = [
   'A_RESUME', 'A_ID_LIVENESS', 'A_GMA',
@@ -63,43 +55,46 @@ export async function POST(req: Request) {
   if (STAGE_GROUP_OF[stage_key] !== session.stage) {
     return bad('wrong_stage_group', `stage ${stage_key} does not belong to group ${session.stage}`);
   }
-  if (session.status === 'completed' || session.status === 'expired'
-      || session.status === 'abandoned' || session.status === 'disqualified') {
+  if (['completed', 'expired', 'abandoned', 'disqualified'].includes(session.status)) {
     return bad('session_closed', `session is ${session.status}`);
   }
 
-  // Use role-specific stage list (if set) or fall back to defaults.
   const order: StageKey[] = session.stage === 'A'
     ? ((session.stages_a ?? DEFAULT_STAGE_A) as StageKey[])
     : ((session.stages_b ?? DEFAULT_STAGE_B) as StageKey[]);
 
-  let scored: { score?: number; payload: Record<string, unknown> };
+  let validated: { payload: Record<string, unknown> };
   try {
-    scored = scoreStageOnServer(stage_key, payload);
+    validated = scoreStageOnServer(stage_key, payload);
   } catch (err) {
     if (err instanceof StageScoringError) return bad(err.reason, err.message);
     throw err;
   }
-  const finalPayload = scored.payload;
-  const score = scored.score ?? PRESENCE_SCORES[stage_key] ?? undefined;
+
+  const finalPayload = validated.payload;
+  let attemptId: string | null = null;
+  let done = false;
 
   await sql.begin(async (tx) => {
-    await tx`
+    const attempts = await tx<Array<{ id: string }>>`
       INSERT INTO app.stage_attempts (
-        session_id, stage_key, attempt_no, score, raw_payload,
-        duration_s, started_at, completed_at
+        session_id, stage_key, attempt_no, raw_payload,
+        duration_s, started_at, completed_at, scoring_status, scoring_error
       ) VALUES (
         ${sessionId}::uuid, ${stage_key}::app.stage_key, 1,
-        ${score ?? null}, ${tx.json(finalPayload as never)},
-        ${duration_s ?? null}, now(), now()
+        ${tx.json(finalPayload as never)},
+        ${duration_s ?? null}, now(), now(), 'queued', NULL
       )
       ON CONFLICT (session_id, stage_key, attempt_no) DO UPDATE
-        SET score        = COALESCE(EXCLUDED.score, app.stage_attempts.score),
-            raw_payload  = app.stage_attempts.raw_payload || EXCLUDED.raw_payload,
-            duration_s   = COALESCE(EXCLUDED.duration_s, app.stage_attempts.duration_s),
+        SET raw_payload = app.stage_attempts.raw_payload || EXCLUDED.raw_payload,
+            duration_s = COALESCE(EXCLUDED.duration_s, app.stage_attempts.duration_s),
             completed_at = now(),
-            started_at   = COALESCE(app.stage_attempts.started_at, EXCLUDED.started_at)
+            started_at = COALESCE(app.stage_attempts.started_at, EXCLUDED.started_at),
+            scoring_status = 'queued',
+            scoring_error = NULL
+      RETURNING id
     `;
+    attemptId = attempts[0]?.id ?? null;
 
     const rows = await tx<{ done: boolean }[]>`
       SELECT (
@@ -109,44 +104,49 @@ export async function POST(req: Request) {
            AND completed_at IS NOT NULL
       ) = ${order.length} AS done
     `;
-    const done = rows[0]?.done ?? false;
+    done = rows[0]?.done ?? false;
 
     if (done) {
       await tx`
         UPDATE app.sessions
-           SET status       = 'completed',
+           SET status = 'completed',
                completed_at = now(),
-               started_at   = COALESCE(started_at, now()),
-               updated_at   = now()
+               started_at = COALESCE(started_at, now()),
+               updated_at = now()
          WHERE id = ${sessionId}::uuid
            AND status <> 'completed'
       `;
     }
 
     await auditLog('candidate-app', 'stage.complete', `session:${sessionId}`, {
-      stage_key, score: score ?? null, duration_s: duration_s ?? null,
+      stage_key,
+      score: null,
+      duration_s: duration_s ?? null,
       stage_group_done: done,
     });
-
-    // Enqueue scoring once the whole stage group is done. For intra-stage
-    // updates (e.g. each of 50 GMA questions posted individually) we'd
-    // skip this — but the handler is stage-level, not question-level, so a
-    // single POST == a single stage done.
-    if (done) {
-      const jobId = await enqueueScoring({ session_id: sessionId, reason: 'stage_completed' });
-      await auditLog('candidate-app', 'scoring.enqueue', `session:${sessionId}`, {
-        job_id: jobId ?? null, reason: 'stage_completed',
-      });
-    }
   });
 
-  // Post-transaction: timing flag + attention check flag (non-critical, best-effort)
+  const jobId = attemptId
+    ? await enqueueStageScore({
+        stage_attempt_id: attemptId,
+        session_id: sessionId,
+        stage_key,
+        reason: 'stage_completed',
+      })
+    : null;
+  await auditLog('candidate-app', 'stage_score.enqueue', `session:${sessionId}`, {
+    stage_key,
+    stage_attempt_id: attemptId,
+    job_id: jobId,
+    reason: 'stage_completed',
+    stage_group_done: done,
+  });
+
   await checkTimingAndFlags(sessionId, stage_key, duration_s ?? null, finalPayload);
 
   return Response.json({ ok: true });
 }
 
-// Minimum expected seconds per stage type — flags below-average completions.
 const MIN_STAGE_SECONDS: Partial<Record<string, number>> = {
   A_BIG5: 90, A_SJT: 60, A_INTEGRITY: 45,
   A_RORSCHACH: 60, A_GMA: 30,
@@ -162,7 +162,6 @@ async function checkTimingAndFlags(
   try {
     const flags: Array<{ severity: string; reason: string; details: unknown }> = [];
 
-    // Timing: flag if below absolute minimum or below 50% of median
     if (duration_s != null) {
       const [bench] = await sql<{ median_s: number | null }[]>`
         SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY duration_s)::integer AS median_s
@@ -184,7 +183,6 @@ async function checkTimingAndFlags(
       }
     }
 
-    // Attention check failures embedded in payload
     const attn = (payload as Record<string, unknown> | null)?.attention_check_failures;
     if (Array.isArray(attn) && attn.length > 0) {
       flags.push({
@@ -204,7 +202,7 @@ async function checkTimingAndFlags(
              coalesce(f->'details', '{}'::jsonb)
       FROM jsonb_array_elements(${sql.json(flags as never)}::jsonb) AS f
     `;
-  } catch { /* non-critical; don't fail the stage completion */ }
+  } catch { /* non-critical */ }
 }
 
 function bad(reason: string, detail?: string) {
@@ -212,6 +210,7 @@ function bad(reason: string, detail?: string) {
     status: 400, headers: { 'Content-Type': 'application/json' },
   });
 }
+
 function unauthorized() {
   return new Response(JSON.stringify({ error: 'no_session' }), {
     status: 401, headers: { 'Content-Type': 'application/json' },

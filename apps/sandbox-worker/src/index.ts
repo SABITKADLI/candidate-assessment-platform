@@ -3,12 +3,13 @@ if (!process.env.DATABASE_URL || !process.env.REDIS_URL || !process.env.SANDBOX_
   process.exit(0);
 }
 
-import { Worker, type Job } from 'bullmq';
+import { Queue, Worker, type Job } from 'bullmq';
 import { Redis } from 'ioredis';
 import pino from 'pino';
 import { z } from 'zod';
 import { sql, auditLog } from '@cap/db';
 import { zStageKey } from '@cap/shared';
+import { SANDBOX_DONE_QUEUE, type SandboxDoneJob } from '@cap/shared/queues';
 import { runSandbox } from './docker.js';
 import type { RunRequest } from './protocol.js';
 
@@ -40,6 +41,7 @@ const QUEUE     = process.env.SANDBOX_QUEUE ?? 'sandbox-runs';
 const CONCURRENCY = Number(process.env.SANDBOX_CONCURRENCY ?? 2);
 
 const connection = new Redis(REDIS_URL, { maxRetriesPerRequest: null });
+const sandboxDoneQueue = new Queue<SandboxDoneJob>(process.env.SANDBOX_DONE_QUEUE ?? SANDBOX_DONE_QUEUE, { connection });
 const stopHeartbeat = startWorkerHeartbeat();
 
 const worker = new Worker<JobData>(
@@ -63,8 +65,6 @@ const worker = new Worker<JobData>(
       network: 'none',
     });
 
-    const sandboxScore = computeSandboxScore(outcome.result, outcome.oom_killed);
-
     // Persist: keep raw result blob on stage_attempts for forensics; update timing.
     await sql`
       UPDATE app.stage_attempts
@@ -80,11 +80,24 @@ const worker = new Worker<JobData>(
              error: outcome.result.error ?? null,
            },
          } as never)},
-             score        = ${sandboxScore},
              duration_s   = ${Math.round(outcome.wall_ms / 1000)},
-             completed_at = now()
+             completed_at = now(),
+             scoring_status = 'queued',
+             scoring_error = NULL
        WHERE id = ${stage_attempt_id}::uuid
     `;
+
+    await sandboxDoneQueue.add('done', {
+      stage_attempt_id,
+      session_id,
+      stage_key,
+    }, {
+      jobId: `sandbox-done-${stage_attempt_id}-${Date.now()}`,
+      removeOnComplete: { age: 3600 * 24, count: 5000 },
+      removeOnFail: { age: 3600 * 48 },
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 3_000 },
+    });
 
     await auditLog('sandbox-worker', 'sandbox.run.done',
       `stage_attempt:${stage_attempt_id}`, {
@@ -123,6 +136,7 @@ for (const sig of ['SIGINT', 'SIGTERM'] as const) {
     log.info({ sig }, 'shutting down');
     stopHeartbeat();
     await worker.close();
+    await sandboxDoneQueue.close();
     await connection.quit();
     process.exit(0);
   });
@@ -137,6 +151,7 @@ function startWorkerHeartbeat() {
       await connection.set(key, JSON.stringify({
         worker: 'sandbox',
         queue: QUEUE,
+        sandbox_done_queue: process.env.SANDBOX_DONE_QUEUE ?? SANDBOX_DONE_QUEUE,
         concurrency: CONCURRENCY,
         started_at: startedAt,
         heartbeat_at: new Date().toISOString(),
@@ -164,12 +179,4 @@ function requireEnv(k: string): string {
   const v = process.env[k];
   if (!v) throw new Error(`${k} not set`);
   return v;
-}
-
-function computeSandboxScore(result: import('./protocol.js').RunResult, oomKilled: boolean): number {
-  if (oomKilled || result.timed_out) return 0;
-  if (result.tests && result.tests.total > 0) {
-    return Math.round((result.tests.passed / result.tests.total) * 100 * 1000) / 1000;
-  }
-  return result.exit_code === 0 ? 100 : 0;
 }

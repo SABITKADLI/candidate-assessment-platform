@@ -19,7 +19,7 @@ const WORK_SAMPLE_MIN_WORDS = 50;
 export function scoreStageOnServer(
   stageKey: StageKey,
   payload: JsonPayload,
-): { score?: number; payload: JsonPayload } {
+): { payload: JsonPayload } {
   switch (stageKey) {
     case 'A_BIG5':
       return scoreBig5Stage(payload);
@@ -38,7 +38,7 @@ export function scoreStageOnServer(
   }
 }
 
-function scoreBig5Stage(payload: JsonPayload): { score: number; payload: JsonPayload } {
+function scoreBig5Stage(payload: JsonPayload): { payload: JsonPayload } {
   const answers = requireLikertAnswers(
     BIG5_ITEMS.map((item) => item.id),
     readAnswerRecord(payload, 'items'),
@@ -59,19 +59,19 @@ function scoreBig5Stage(payload: JsonPayload): { score: number; payload: JsonPay
   const score = Math.round(Object.values(scores).reduce((sum, value) => sum + value, 0) / 5);
 
   return {
-    score,
     payload: {
       ...payload,
       answers,
       items,
       scores,
+      mechanical_score: score,
       attention_check_failures: attentionCheckFailures,
       scoring_source: 'server',
     },
   };
 }
 
-function scoreMbtiStage(payload: JsonPayload): { score: number; payload: JsonPayload } {
+function scoreMbtiStage(payload: JsonPayload): { payload: JsonPayload } {
   const answers = requireChoiceAnswers(
     MBTI_ITEMS.map((item) => item.id),
     readAnswerRecord(payload),
@@ -87,12 +87,11 @@ function scoreMbtiStage(payload: JsonPayload): { score: number; payload: JsonPay
   );
 
   return {
-    score: clarityScore,
-    payload: { ...payload, answers, type, scores, clarity_score: clarityScore, scoring_source: 'server' },
+    payload: { ...payload, answers, type, scores, clarity_score: clarityScore, mechanical_score: clarityScore, scoring_source: 'server' },
   };
 }
 
-function scoreSjtStage(payload: JsonPayload): { score: number; payload: JsonPayload } {
+function scoreSjtStage(payload: JsonPayload): { payload: JsonPayload } {
   const answers = requireChoiceAnswers(
     SJT_SCENARIOS.map((scenario) => scenario.id),
     readAnswerRecord(payload),
@@ -117,18 +116,18 @@ function scoreSjtStage(payload: JsonPayload): { score: number; payload: JsonPayl
     .map((scenario) => ({ id: scenario.id, expected: scenario.correctKey, got: answers[scenario.id] ?? null }));
 
   return {
-    score,
     payload: {
       ...payload,
       answers,
       items,
+      mechanical_score: score,
       attention_check_failures: attentionCheckFailures,
       scoring_source: 'server',
     },
   };
 }
 
-function scoreIntegrityStage(payload: JsonPayload): { score: number; payload: JsonPayload } {
+function scoreIntegrityStage(payload: JsonPayload): { payload: JsonPayload } {
   const answers = requireLikertAnswers(
     INTEGRITY_ITEMS.map((item) => item.id),
     readAnswerRecord(payload),
@@ -142,10 +141,10 @@ function scoreIntegrityStage(payload: JsonPayload): { score: number; payload: Js
     answer: answers[item.id] ?? null,
   }));
 
-  return { score, payload: { ...payload, answers, items, scoring_source: 'server' } };
+  return { payload: { ...payload, answers, items, mechanical_score: score, scoring_source: 'server' } };
 }
 
-function scoreRorschachStage(payload: JsonPayload): { score: number; payload: JsonPayload } {
+function scoreRorschachStage(payload: JsonPayload): { payload: JsonPayload } {
   const responses = getRecord(payload.responses, 'responses');
   const normalized: Record<string, string> = {};
   const metrics: Array<{ id: string; chars: number; words: number }> = [];
@@ -164,13 +163,12 @@ function scoreRorschachStage(payload: JsonPayload): { score: number; payload: Js
   }
 
   return {
-    score: 100,
     payload: {
       ...payload,
       responses: normalized,
       response_metrics: metrics,
-      scoring_policy: 'completion_only_minimum_response',
-      scoring_source: 'server',
+      scoring_policy: 'ai_graded_after_minimum_response_validation',
+      scoring_source: 'server_validated_grader_scored',
     },
   };
 }

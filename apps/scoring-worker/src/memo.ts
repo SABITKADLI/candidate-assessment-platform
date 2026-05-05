@@ -45,6 +45,16 @@ interface Evidence {
   status: string;
   attempts: Array<{ stage_key: string; score: number | null; duration_s: number | null }>;
   open_flags: Array<{ severity: string; reason: string; details: unknown }>;
+  grader_evidence: Array<{
+    stage_key: string;
+    grader_version: string;
+    pass_no: number;
+    score: number | null;
+    evidence: unknown;
+    confidence: number | null;
+    flags: string[];
+    rationale: string | null;
+  }>;
   composite: CompositeOutput;
 }
 
@@ -109,6 +119,31 @@ async function gatherEvidence(session_id: string, composite: CompositeOutput): P
     LIMIT 25
   `;
 
+  const graderEvidence = await sql<Array<{
+    stage_key: string;
+    grader_version: string;
+    pass_no: number;
+    score: string | null;
+    evidence: unknown;
+    confidence: string | null;
+    flags: string[];
+    rationale: string | null;
+  }>>`
+    SELECT a.stage_key::text AS stage_key,
+           sr.grader_version,
+           sr.pass_no,
+           sr.score::text AS score,
+           sr.evidence,
+           sr.confidence::text AS confidence,
+           sr.flags,
+           NULL::text AS rationale
+    FROM app.score_runs sr
+    JOIN app.stage_attempts a ON a.id = sr.stage_attempt_id
+    WHERE a.session_id = ${session_id}::uuid
+    ORDER BY a.stage_key, sr.pass_no, sr.created_at DESC
+    LIMIT 40
+  `;
+
   return {
     role_name: meta.role_name,
     stage: meta.stage,
@@ -119,6 +154,16 @@ async function gatherEvidence(session_id: string, composite: CompositeOutput): P
       duration_s: a.duration_s,
     })),
     open_flags: flags,
+    grader_evidence: graderEvidence.map((row) => ({
+      stage_key: row.stage_key,
+      grader_version: row.grader_version,
+      pass_no: row.pass_no,
+      score: row.score == null ? null : Number(row.score),
+      evidence: row.evidence,
+      confidence: row.confidence == null ? null : Number(row.confidence),
+      flags: row.flags,
+      rationale: row.rationale,
+    })),
     composite,
   };
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { type KeyboardEvent, type ReactNode, useState, useEffect, useRef } from 'react';
-import { LayoutDashboard, ListChecks, ShieldAlert, Settings, SendHorizonal, Briefcase, Menu, X } from 'lucide-react';
+import { LayoutDashboard, ListChecks, ShieldAlert, Settings, SendHorizonal, Briefcase, Menu, X, ClipboardCheck, Activity } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 
 export interface SidebarItem {
@@ -21,6 +21,8 @@ export interface SidebarProps {
 const DEFAULT_ITEMS: SidebarItem[] = [
   { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={15} strokeWidth={1.75} /> },
   { id: 'sessions',  label: 'Sessions',  href: '/sessions',  icon: <ListChecks     size={15} strokeWidth={1.75} /> },
+  { id: 'review',    label: 'Review',    href: '/review-queue', icon: <ClipboardCheck size={15} strokeWidth={1.75} /> },
+  { id: 'calibration', label: 'Calibration', href: '/calibration', icon: <Activity size={15} strokeWidth={1.75} /> },
   { id: 'flags',     label: 'Flags',     href: '/flags',     icon: <ShieldAlert    size={15} strokeWidth={1.75} /> },
   { id: 'roles',     label: 'Roles',     href: '/roles',     icon: <Briefcase      size={15} strokeWidth={1.75} /> },
   { id: 'outbox',    label: 'Outbox',    href: '/outbox',    icon: <SendHorizonal  size={15} strokeWidth={1.75} /> },

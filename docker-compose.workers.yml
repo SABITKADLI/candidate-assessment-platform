@@ -21,6 +21,7 @@ services:
         required: false
     environment:
       NODE_ENV: production
+    # Handles composite/memo/ATS plus the AI-first stage-score queue.
 
   sandbox-worker:
     profiles: ["sandbox", "all"]

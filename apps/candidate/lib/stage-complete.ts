@@ -1,6 +1,6 @@
 import { sql, auditLog } from '@cap/db';
 import { STAGE_GROUP_OF, type StageKey } from '@cap/shared';
-import { enqueueScoring } from './queues';
+import { enqueueStageScore } from './queues';
 
 const STAGE_A_ORDER: StageKey[] = [
   'A_RESUME','A_ID_LIVENESS','A_GMA',
@@ -38,19 +38,20 @@ export async function completeStage(a: CompleteArgs): Promise<CompleteResult> {
   await sql.begin(async (tx) => {
     await tx`
       INSERT INTO app.stage_attempts (
-        session_id, stage_key, attempt_no, score, raw_payload,
-        duration_s, started_at, completed_at
+        session_id, stage_key, attempt_no, raw_payload,
+        duration_s, started_at, completed_at, scoring_status, scoring_error
       ) VALUES (
         ${a.session_id}::uuid, ${a.stage_key}::app.stage_key, 1,
-        ${a.score ?? null}, ${tx.json(a.payload as never)},
-        ${a.duration_s ?? null}, now(), now()
+        ${tx.json(a.payload as never)},
+        ${a.duration_s ?? null}, now(), now(), 'queued', NULL
       )
       ON CONFLICT (session_id, stage_key, attempt_no) DO UPDATE
-        SET score        = COALESCE(EXCLUDED.score, app.stage_attempts.score),
-            raw_payload  = app.stage_attempts.raw_payload || EXCLUDED.raw_payload,
+        SET raw_payload  = app.stage_attempts.raw_payload || EXCLUDED.raw_payload,
             duration_s   = COALESCE(EXCLUDED.duration_s, app.stage_attempts.duration_s),
             completed_at = now(),
-            started_at   = COALESCE(app.stage_attempts.started_at, EXCLUDED.started_at)
+            started_at   = COALESCE(app.stage_attempts.started_at, EXCLUDED.started_at),
+            scoring_status = 'queued',
+            scoring_error = NULL
     `;
 
     const rows = await tx<{ done: boolean }[]>`
@@ -75,17 +76,31 @@ export async function completeStage(a: CompleteArgs): Promise<CompleteResult> {
     }
 
     await auditLog('candidate-app', 'stage.complete', `session:${a.session_id}`, {
-      stage_key: a.stage_key, score: a.score ?? null, duration_s: a.duration_s ?? null,
+      stage_key: a.stage_key, score: null, duration_s: a.duration_s ?? null,
       stage_group_done: done,
     });
   });
 
-  let jobId: string | null = null;
-  if (done) {
-    jobId = await enqueueScoring({ session_id: a.session_id, reason: 'stage_completed' });
-    await auditLog('candidate-app', 'scoring.enqueue', `session:${a.session_id}`, {
-      job_id: jobId, reason: 'stage_completed',
-    });
-  }
+  const [attempt] = await sql<Array<{ id: string }>>`
+    SELECT id FROM app.stage_attempts
+    WHERE session_id = ${a.session_id}::uuid
+      AND stage_key = ${a.stage_key}::app.stage_key
+      AND attempt_no = 1
+    LIMIT 1
+  `;
+  const jobId = attempt
+    ? await enqueueStageScore({
+        stage_attempt_id: attempt.id,
+        session_id: a.session_id,
+        stage_key: a.stage_key,
+        reason: 'stage_completed',
+      })
+    : null;
+  await auditLog('candidate-app', 'stage_score.enqueue', `session:${a.session_id}`, {
+    stage_key: a.stage_key,
+    stage_attempt_id: attempt?.id ?? null,
+    job_id: jobId,
+    reason: 'stage_completed',
+  });
   return { stage_group_done: done, scoring_job_id: jobId };
 }
