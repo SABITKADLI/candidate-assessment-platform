@@ -9,7 +9,7 @@ import {
 } from '@cap/shared/diagnostics';
 import { auth0Configured } from './auth0';
 
-const DEFAULT_MEMO_MODEL = 'claude-sonnet-4-20250514';
+const DEFAULT_MEMO_MODEL = 'claude-sonnet-4-6';
 const CHECK_TIMEOUT_MS = 8_000;
 
 export interface AdminDiagnosticsResponse extends DiagnosticsResponse {

@@ -26,7 +26,7 @@ function s3(): S3Client {
   return _s3;
 }
 
-const MODEL = process.env.MEMO_MODEL ?? 'claude-sonnet-4-20250514';
+const MODEL = process.env.MEMO_MODEL ?? 'claude-sonnet-4-6';
 const BUCKET = process.env.S3_BUCKET ?? '';
 
 export interface MemoInput {

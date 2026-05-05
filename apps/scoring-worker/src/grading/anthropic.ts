@@ -19,7 +19,7 @@ export interface ClaudeGradeResult {
   model: string;
 }
 
-const MODEL = process.env.GRADER_MODEL ?? 'claude-sonnet-4-20250514';
+const MODEL = process.env.GRADER_MODEL ?? 'claude-sonnet-4-6';
 
 let _client: Anthropic | null = null;
 

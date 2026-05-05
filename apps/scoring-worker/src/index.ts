@@ -178,8 +178,8 @@ function startWorkerHeartbeat() {
         grader_concurrency: GRADER_CONCURRENCY,
         started_at: startedAt,
         heartbeat_at: new Date().toISOString(),
-        memo_model: process.env.MEMO_MODEL ?? 'claude-sonnet-4-20250514',
-        grader_model: process.env.GRADER_MODEL ?? 'claude-sonnet-4-20250514',
+        memo_model: process.env.MEMO_MODEL ?? 'claude-sonnet-4-6',
+        grader_model: process.env.GRADER_MODEL ?? 'claude-sonnet-4-6',
         config: {
           database_url_present: Boolean(process.env.DATABASE_URL),
           redis_url_present: Boolean(process.env.REDIS_URL),

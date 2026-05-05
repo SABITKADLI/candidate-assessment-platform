@@ -11,7 +11,7 @@ interface CalibrationFixture {
   human_score: string | number;
 }
 
-const MODEL = process.env.GRADER_MODEL ?? 'claude-sonnet-4-20250514';
+const MODEL = process.env.GRADER_MODEL ?? 'claude-sonnet-4-6';
 
 async function main(): Promise<void> {
   const fixtures = await sql<CalibrationFixture[]>`
