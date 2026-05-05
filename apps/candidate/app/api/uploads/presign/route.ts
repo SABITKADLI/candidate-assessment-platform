@@ -28,7 +28,7 @@ const zBody = z.object({
 let client: S3Client | null = null;
 function s3() {
   client ??= new S3Client({
-    region: process.env.AWS_REGION ?? 'eu-north-1',
+    region: process.env.AWS_REGION ?? 'us-east-1',
     credentials: process.env.AWS_ACCESS_KEY_ID
       ? {
           accessKeyId: process.env.AWS_ACCESS_KEY_ID,

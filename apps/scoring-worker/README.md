@@ -65,8 +65,8 @@ REDIS_URL=redis://...
 # Memo (optional)
 ANTHROPIC_API_KEY=...
 MEMO_MODEL=claude-sonnet-4-6
-AWS_REGION=eu-north-1
-S3_BUCKET=cap-assessment-prod-sabitkadli
+AWS_REGION=us-east-1
+S3_BUCKET=cap-assessment-prod-sabitkadli-us-east-1
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 
@@ -93,8 +93,8 @@ it does not print secrets.
 For the current production bucket in Stockholm, use:
 
 ```
-AWS_REGION=eu-north-1
-S3_BUCKET=cap-assessment-prod-sabitkadli
+AWS_REGION=us-east-1
+S3_BUCKET=cap-assessment-prod-sabitkadli-us-east-1
 ```
 
 ## Production Docker

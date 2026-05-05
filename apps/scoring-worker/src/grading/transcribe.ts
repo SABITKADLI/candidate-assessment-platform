@@ -27,7 +27,7 @@ let _transcribe: TranscribeClient | null = null;
 
 function s3(): S3Client {
   _s3 ??= new S3Client({
-    region: process.env.AWS_REGION ?? 'eu-north-1',
+    region: process.env.AWS_REGION ?? 'us-east-1',
     credentials: process.env.AWS_ACCESS_KEY_ID
       ? {
           accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -40,7 +40,7 @@ function s3(): S3Client {
 
 function transcribe(): TranscribeClient {
   _transcribe ??= new TranscribeClient({
-    region: process.env.AWS_REGION ?? 'eu-north-1',
+    region: process.env.AWS_REGION ?? 'us-east-1',
     credentials: process.env.AWS_ACCESS_KEY_ID
       ? {
           accessKeyId: process.env.AWS_ACCESS_KEY_ID,

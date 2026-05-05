@@ -349,8 +349,8 @@ Required shared values:
 ```env
 DATABASE_URL=postgresql://...        # production Neon/Postgres URL
 REDIS_URL=rediss://...               # same Vercel Redis used by the candidate app
-AWS_REGION=eu-north-1
-S3_BUCKET=cap-assessment-prod-sabitkadli
+AWS_REGION=us-east-1
+S3_BUCKET=cap-assessment-prod-sabitkadli-us-east-1
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 ```
@@ -438,15 +438,15 @@ completed artifact.
 Required candidate Vercel env:
 
 ```env
-AWS_REGION=eu-north-1
-S3_BUCKET=cap-assessment-prod-sabitkadli
+AWS_REGION=us-east-1
+S3_BUCKET=cap-assessment-prod-sabitkadli-us-east-1
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 ```
 
 The same S3 env must also exist on the scoring worker so assessment memos can be
 uploaded to S3. The IAM user/key needs object access on the production bucket:
-`s3:PutObject` and `s3:GetObject` on `arn:aws:s3:::cap-assessment-prod-sabitkadli/*`.
+`s3:PutObject` and `s3:GetObject` on `arn:aws:s3:::cap-assessment-prod-sabitkadli-us-east-1/*`.
 `s3:ListBucket` is only needed for manual/debug listing.
 
 Set bucket CORS to allow the browser upload headers:
