@@ -1,27 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Webhook } from 'svix';
-import {
-  updateEmailStatusByResendId,
-  markEmailOpened,
-  markEmailClicked,
-} from '@/lib/emailLog';
-import type { EmailStatus } from '@/lib/emailLog';
+import { applyResendEmailEvent } from '@/lib/emailLog';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-// Events that update the delivery status column.
-const STATUS_EVENTS: Record<string, EmailStatus> = {
-  'email.sent':             'sending',
-  'email.delivered':        'delivered',
-  'email.bounced':          'bounced',
-  'email.complained':       'complained',
-  'email.delivery_delayed': 'sending',
-};
-
-// Events that only set engagement timestamps (opened_at / clicked_at).
-// These never overwrite the delivery status.
-const ENGAGEMENT_EVENTS = new Set(['email.opened', 'email.clicked']);
 
 type ResendEvent = {
   type: string;
@@ -32,18 +14,17 @@ type ResendEvent = {
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
 
-  const secret      = process.env.RESEND_WEBHOOK_SECRET;
-  const svixId        = req.headers.get('svix-id');
+  const secret = process.env.RESEND_WEBHOOK_SECRET;
+  const svixId = req.headers.get('svix-id');
   const svixTimestamp = req.headers.get('svix-timestamp');
   const svixSignature = req.headers.get('svix-signature');
 
-  // Only verify when all three Svix headers are present.
-  // Resend always sends them in production; absent headers allow unsigned
-  // local test calls via curl without exposing a bypass in production.
+  // Resend sends Svix headers in production. Missing headers still allow
+  // unsigned local curl tests when a developer has not configured a secret.
   if (secret && svixId && svixTimestamp && svixSignature) {
     try {
       new Webhook(secret).verify(rawBody, {
-        'svix-id':        svixId,
+        'svix-id': svixId,
         'svix-timestamp': svixTimestamp,
         'svix-signature': svixSignature,
       });
@@ -62,23 +43,14 @@ export async function POST(req: NextRequest) {
   const resendId = event.data?.email_id;
   if (!resendId) return NextResponse.json({ ok: true });
 
-  const statusUpdate = STATUS_EVENTS[event.type];
-  if (statusUpdate) {
-    await updateEmailStatusByResendId(resendId, statusUpdate).catch(
-      (e) => console.error('[webhook/resend] status update failed:', e),
-    );
-  } else if (event.type === 'email.opened') {
-    await markEmailOpened(resendId).catch(
-      (e) => console.error('[webhook/resend] opened update failed:', e),
-    );
-  } else if (event.type === 'email.clicked') {
-    await markEmailClicked(resendId).catch(
-      (e) => console.error('[webhook/resend] clicked update failed:', e),
-    );
-  }
+  await applyResendEmailEvent({
+    resendId,
+    eventType: event.type,
+    occurredAt: event.created_at,
+    source: 'webhook',
+    webhookEventId: svixId,
+    payload: event,
+  }).catch((e) => console.error('[webhook/resend] update failed:', e));
 
   return NextResponse.json({ ok: true });
 }
-
-// Silence unused import warning — kept for documentation.
-void ENGAGEMENT_EVENTS;

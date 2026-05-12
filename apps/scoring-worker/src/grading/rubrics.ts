@@ -20,6 +20,15 @@ export const RUBRICS = {
       { key: 'presentation', points: 10, description: 'Clarity, organization, and professional presentation.' },
     ],
   },
+  A_ID_LIVENESS: {
+    stageName: 'ID & Liveness Verification',
+    criteria: [
+      { key: 'face_match', points: 35, description: 'ID portrait and live frame appear to show the same person.' },
+      { key: 'id_readability', points: 20, description: 'ID image is clear enough to inspect photo and visible name.' },
+      { key: 'resume_name_match', points: 25, description: 'Visible ID name appears consistent with the extracted resume name.' },
+      { key: 'liveness_plausibility', points: 20, description: 'Live frame appears genuine rather than replayed, printed, or spoofed.' },
+    ],
+  },
   A_RORSCHACH: {
     stageName: 'Rorschach',
     criteria: [

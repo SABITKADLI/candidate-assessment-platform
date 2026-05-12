@@ -39,7 +39,7 @@ export async function GET(
   const runs = await sql`
     SELECT id, grader_version, model, pass_no, score::text AS score, subscores,
            evidence, confidence::text AS confidence, flags, prompt_hash,
-           input_token_count, output_token_count, latency_ms, created_at
+           input_token_count, output_token_count, latency_ms, rationale, created_at
     FROM app.score_runs
     WHERE stage_attempt_id = ${attemptId}::uuid
     ORDER BY pass_no ASC, created_at DESC

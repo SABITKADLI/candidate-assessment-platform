@@ -79,7 +79,7 @@ export default async function SessionGradingPage({ params }: { params: Promise<{
     ? await sql<ScoreRunView[]>`
         SELECT id, stage_attempt_id, grader_version, model, pass_no,
                score::text AS score, subscores, evidence, confidence::text AS confidence,
-               flags
+               flags, rationale
         FROM app.score_runs
         WHERE stage_attempt_id = ANY(${attempts.map((attempt) => attempt.id)}::uuid[])
         ORDER BY stage_attempt_id, pass_no, created_at DESC

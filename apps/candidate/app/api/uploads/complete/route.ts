@@ -80,11 +80,12 @@ export async function POST(req: Request) {
   if (head.Metadata?.sha256 !== sha256_hex) return jsonError('hash_mismatch', 400);
 
   const [artifact] = await sql<Array<{ id: string }>>`
-    INSERT INTO app.artifacts (session_id, stage_key, kind, s3_key, sha256, size_bytes, mime_type)
+    INSERT INTO app.artifacts (session_id, stage_key, kind, upload_kind, s3_key, sha256, size_bytes, mime_type)
     VALUES (
       ${sessionId}::uuid,
       ${contract.stageKey}::app.stage_key,
       ${contract.artifactKind}::app.artifact_kind,
+      ${kind},
       ${key},
       decode(${sha256_hex}, 'hex'),
       ${size_bytes},
@@ -93,7 +94,8 @@ export async function POST(req: Request) {
     ON CONFLICT (s3_key) DO UPDATE
       SET sha256 = EXCLUDED.sha256,
           size_bytes = EXCLUDED.size_bytes,
-          mime_type = EXCLUDED.mime_type
+          mime_type = EXCLUDED.mime_type,
+          upload_kind = EXCLUDED.upload_kind
     RETURNING id
   `;
   if (!artifact) return jsonError('db_error', 500);

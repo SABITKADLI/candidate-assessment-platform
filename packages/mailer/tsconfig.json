@@ -1,0 +1,8 @@
+{
+  "extends": "@cap/config-ts/base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts"]
+}

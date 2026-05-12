@@ -136,7 +136,7 @@ async function gatherEvidence(session_id: string, composite: CompositeOutput): P
            sr.evidence,
            sr.confidence::text AS confidence,
            sr.flags,
-           NULL::text AS rationale
+           sr.rationale
     FROM app.score_runs sr
     JOIN app.stage_attempts a ON a.id = sr.stage_attempt_id
     WHERE a.session_id = ${session_id}::uuid

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { sandboxPassrate } from '../src/grading/graders';
 import { computeProsody } from '../src/grading/prosody';
+import { guessResumeName } from '../src/grading/resume';
 
 test('hybrid coding passrate reads sandbox test results', () => {
   assert.equal(sandboxPassrate({ tests: { passed: 3, total: 4 }, timed_out: false, oom_killed: false }), 75);
@@ -19,4 +20,9 @@ test('prosody computes confidence, pace, fillers, pauses, and speakers', () => {
   assert.equal(summary.filler_ratio, 0.333);
   assert.equal(summary.mean_word_confidence, 0.8);
   assert.deepEqual(summary.pause_distribution_ms, [1000]);
+});
+
+test('resume extraction guesses a likely name from early resume lines', () => {
+  assert.equal(guessResumeName('Jane Q Public\njane@example.com\nExperience\nBuilt platforms.'), 'Jane Q Public');
+  assert.equal(guessResumeName('Resume\n+1 555 123 4567\nSkills\nTypeScript'), null);
 });

@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { sql, auditLog } from '@cap/db';
 import { zStageKey, STAGE_GROUP_OF, type StageGroup, type StageKey } from '@cap/shared';
+import { sendInviteEmail } from '@cap/mailer';
 import { enqueueStageScore } from '@/lib/queues';
 import { rateLimit } from '@/lib/rate-limit';
 import { StageScoringError, scoreStageOnServer } from '@/lib/server-stage-scoring';
@@ -143,6 +144,7 @@ export async function POST(req: Request) {
   });
 
   await checkTimingAndFlags(sessionId, stage_key, duration_s ?? null, finalPayload);
+  await triggerPipelineStageBInvite(sessionId, session.stage, done);
 
   return Response.json({ ok: true });
 }
@@ -203,6 +205,69 @@ async function checkTimingAndFlags(
       FROM jsonb_array_elements(${sql.json(flags as never)}::jsonb) AS f
     `;
   } catch { /* non-critical */ }
+}
+
+async function triggerPipelineStageBInvite(
+  stageASessionId: string,
+  stage: StageGroup,
+  stageDone: boolean,
+): Promise<void> {
+  if (stage !== 'A' || !stageDone) return;
+
+  try {
+    const [row] = await sql<Array<{
+      session_id: string;
+      resume_token: string;
+      expires_at: Date;
+      email: string | null;
+      role_name: string | null;
+    }>>`
+      SELECT b.id AS session_id,
+             b.resume_token,
+             b.expires_at,
+             c.email,
+             r.name AS role_name
+      FROM app.sessions a
+      JOIN app.sessions b
+        ON b.pipeline_id = a.pipeline_id
+       AND b.stage = 'B'::app.stage_group
+      JOIN app.candidates c ON c.id = b.candidate_id
+      LEFT JOIN app.roles r ON r.id = b.role_id
+      WHERE a.id = ${stageASessionId}::uuid
+        AND a.stage = 'A'::app.stage_group
+        AND a.pipeline_id IS NOT NULL
+        AND b.status IN ('pending', 'in_progress')
+        AND b.expires_at > now()
+      ORDER BY b.created_at ASC
+      LIMIT 1
+    `;
+    if (!row?.email) return;
+
+    const base = process.env.NEXT_PUBLIC_CANDIDATE_BASE_URL ?? 'http://localhost:3000';
+    const result = await sendInviteEmail({
+      to: row.email,
+      inviteUrl: `${base}/s/${row.resume_token}`,
+      stage: 'B',
+      expiresAt: row.expires_at,
+      roleName: row.role_name ?? undefined,
+      sessionId: row.session_id,
+      purpose: 'pipeline_stage_b_auto',
+      oncePerSessionPurpose: true,
+    });
+
+    await auditLog('candidate-app', 'pipeline.stage_b_invite', `session:${stageASessionId}`, {
+      stage_b_session_id: row.session_id,
+      sent: result.sent,
+      skipped: result.skipped,
+      log_id: result.logId,
+      resend_id: result.resendId,
+    });
+  } catch (err) {
+    console.error('[stage.complete] pipeline Stage B invite failed:', err);
+    await auditLog('candidate-app', 'pipeline.stage_b_invite_failed', `session:${stageASessionId}`, {
+      error: err instanceof Error ? err.message.slice(0, 300) : String(err).slice(0, 300),
+    }).catch(() => undefined);
+  }
 }
 
 function bad(reason: string, detail?: string) {

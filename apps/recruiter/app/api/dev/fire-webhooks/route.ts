@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@cap/db';
-import { updateEmailStatusByResendId, markEmailOpened, markEmailClicked } from '@/lib/emailLog';
+import { applyResendEmailEvent } from '@/lib/emailLog';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,9 +28,9 @@ export async function POST(req: NextRequest) {
   }
 
   const id = row.resend_id;
-  await updateEmailStatusByResendId(id, 'delivered');
-  await markEmailOpened(id);
-  await markEmailClicked(id);
+  await applyResendEmailEvent({ resendId: id, eventType: 'email.delivered', source: 'webhook' });
+  await applyResendEmailEvent({ resendId: id, eventType: 'email.opened', source: 'webhook' });
+  await applyResendEmailEvent({ resendId: id, eventType: 'email.clicked', source: 'webhook' });
 
   return NextResponse.json({ ok: true, resend_id: id, fired: ['delivered', 'opened', 'clicked'] });
 }

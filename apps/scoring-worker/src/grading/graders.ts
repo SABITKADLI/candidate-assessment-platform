@@ -1,11 +1,16 @@
 import { reconcile as reconcileResults, type Flag, type GraderResult, type ReconcileOutput } from '@cap/graders';
-import { sql } from '@cap/db';
 import type { GradeOutcome, RunDraft, StageAttemptRow, StageGrader, GraderContext } from './types.js';
 import { gradeWithClaude } from './anthropic.js';
 import { buildPrimaryPrompt, buildVerifierPrompt } from './prompts.js';
 import { RUBRICS, round3, weightedScore, type Rubric } from './rubrics.js';
 import { ensureTranscript } from './transcribe.js';
 import { sampleVideoFrames } from './frames.js';
+import {
+  buildIdentityInput,
+  buildIdentityVisionPrompt,
+  identityFallback,
+} from './identity.js';
+import { ensureResumeExtractionForAttempt } from './resume.js';
 
 const DETERMINISTIC_MODEL = 'deterministic';
 
@@ -23,7 +28,7 @@ export function getStageGrader(stageKey: string): StageGrader {
     case 'A_GMA':
       return deterministic('a_gma@v1', scoreGma);
     case 'A_ID_LIVENESS':
-      return deterministic('a_id_liveness@v1', async (attempt) => presenceScore(attempt, 'liveness'));
+      return idLivenessVisionGrader();
     case 'A_BIG5':
       return deterministic('a_big5@v1', scoreBig5);
     case 'A_MBTI':
@@ -96,6 +101,64 @@ function aiGrader(
         candidateInput,
         fallback: fallbackFromRubric(rubric, estimateTextQuality(candidateInput)),
       });
+    },
+  };
+}
+
+function idLivenessVisionGrader(): StageGrader {
+  const version = 'a_id_liveness_vision@v1';
+  const rubric = RUBRICS.A_ID_LIVENESS;
+  return {
+    version,
+    async grade(attempt) {
+      const input = await buildIdentityInput(attempt);
+      const fallback = identityFallback(input);
+
+      const primaryPrompt = buildIdentityVisionPrompt(input);
+      const primaryCall = await gradeWithClaude({
+        ...primaryPrompt,
+        fallback,
+      });
+      const primary: RunDraft = {
+        pass_no: 1,
+        grader_version: version,
+        model: primaryCall.model,
+        result: normalizeScoreFromSubscores(primaryCall.result, rubric),
+        prompt_hash: primaryCall.prompt_hash,
+        raw_response: primaryCall.raw_response,
+        input_token_count: primaryCall.input_token_count,
+        output_token_count: primaryCall.output_token_count,
+        latency_ms: primaryCall.latency_ms,
+        rationale: primaryCall.result.rationale,
+      };
+
+      if (process.env.GRADER_VERIFIER_ENABLED === 'false') {
+        return { primary, reconciliation: reconcileResults(primary.result) };
+      }
+
+      const verifierPrompt = buildIdentityVisionPrompt(input, primary.result);
+      const verifierCall = await gradeWithClaude({
+        ...verifierPrompt,
+        fallback: primary.result,
+      });
+      const verifier: RunDraft = {
+        pass_no: 2,
+        grader_version: version,
+        model: verifierCall.model,
+        result: normalizeScoreFromSubscores(verifierCall.result, rubric),
+        prompt_hash: verifierCall.prompt_hash,
+        raw_response: verifierCall.raw_response,
+        input_token_count: verifierCall.input_token_count,
+        output_token_count: verifierCall.output_token_count,
+        latency_ms: verifierCall.latency_ms,
+        rationale: verifierCall.result.rationale,
+      };
+
+      return {
+        primary,
+        verifier,
+        reconciliation: reconcileResults(primary.result, verifier.result),
+      };
     },
   };
 }
@@ -277,6 +340,7 @@ async function runTwoPassAi(args: {
     input_token_count: primaryCall.input_token_count,
     output_token_count: primaryCall.output_token_count,
     latency_ms: primaryCall.latency_ms,
+    rationale: primaryCall.result.rationale,
   };
 
   if (process.env.GRADER_VERIFIER_ENABLED === 'false') {
@@ -303,6 +367,7 @@ async function runTwoPassAi(args: {
     input_token_count: verifierCall.input_token_count,
     output_token_count: verifierCall.output_token_count,
     latency_ms: verifierCall.latency_ms,
+    rationale: verifierCall.result.rationale,
   };
 
   return {
@@ -321,6 +386,7 @@ function deterministicRun(version: string, result: GraderResult): RunDraft {
     prompt_hash: `deterministic:${version}`,
     raw_response: JSON.stringify(result),
     latency_ms: 0,
+    rationale: result.rationale,
   };
 }
 
@@ -341,25 +407,6 @@ function normalizeScoreFromSubscores(result: GraderResult, rubric: Rubric): Grad
     ? weightedScore(result.subscores, rubric)
     : result.score;
   return { ...result, score: round3(score) };
-}
-
-async function presenceScore(attempt: StageAttemptRow, kind: string): Promise<GraderResult> {
-  const rows = await sql<Array<{ id: string }>>`
-    SELECT id FROM app.artifacts
-    WHERE session_id = ${attempt.session_id}::uuid
-      AND stage_key = ${attempt.stage_key}::app.stage_key
-      AND kind = ${kind}::app.artifact_kind
-    LIMIT 1
-  `;
-  const score = rows.length ? 100 : 0;
-  return {
-    score,
-    subscores: { presence: score },
-    evidence: rows.length ? [{ kind: 'line_ref', value: `${kind} artifact present` }] : [],
-    confidence: rows.length ? 1 : 0.4,
-    flags: rows.length ? [] : ['media_corrupt'],
-    rationale: rows.length ? `${kind} artifact present.` : `${kind} artifact missing.`,
-  };
 }
 
 function scoreGma(attempt: StageAttemptRow): GraderResult {
@@ -405,11 +452,15 @@ function scoreMbti(attempt: StageAttemptRow): GraderResult {
   };
 }
 
-function resumeInput(attempt: StageAttemptRow): unknown {
+async function resumeInput(attempt: StageAttemptRow): Promise<unknown> {
+  const extraction = await ensureResumeExtractionForAttempt(attempt);
   return {
+    resume_text: extraction.text,
+    resume_name_guess: extraction.name_guess,
+    extraction_status: extraction.status,
+    extraction_truncated: extraction.truncated,
+    artifact_id: extraction.artifact_id ?? attempt.raw_payload.artifact_id ?? null,
     parsed_cv: attempt.raw_payload.parsed_cv ?? null,
-    artifact_id: attempt.raw_payload.artifact_id ?? null,
-    parser_status: attempt.raw_payload.parsed_cv ? 'parsed' : 'missing_parser_todo',
     role: {
       name: attempt.role_name,
       description: attempt.role_description,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { z } from 'zod';
 import { sql } from '@cap/db';
 import { auth0, auth0Configured } from '@/lib/auth0';
@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
     // Create Stage A and Stage B sessions in one transaction.
     const tokenA = 'tok_' + randomBytes(20).toString('hex');
     const tokenB = 'tok_' + randomBytes(20).toString('hex');
+    const pipelineId = randomUUID();
 
     const rows = await sql<{ session_id: string; resume_token: string; stage: string }[]>`
       WITH c AS (
@@ -50,14 +51,14 @@ export async function POST(req: NextRequest) {
         RETURNING id
       ),
       sa AS (
-        INSERT INTO app.sessions (candidate_id, stage, status, resume_token, expires_at, role_id)
-        SELECT id, 'A'::app.stage_group, 'pending', ${tokenA}, ${expiresAt}, ${role_id ?? null}::uuid
+        INSERT INTO app.sessions (candidate_id, stage, status, resume_token, expires_at, role_id, pipeline_id)
+        SELECT id, 'A'::app.stage_group, 'pending', ${tokenA}, ${expiresAt}, ${role_id ?? null}::uuid, ${pipelineId}::uuid
         FROM c
         RETURNING id AS session_id, resume_token, 'A' AS stage
       ),
       sb AS (
-        INSERT INTO app.sessions (candidate_id, stage, status, resume_token, expires_at, role_id)
-        SELECT id, 'B'::app.stage_group, 'pending', ${tokenB}, ${expiresAt}, ${role_id ?? null}::uuid
+        INSERT INTO app.sessions (candidate_id, stage, status, resume_token, expires_at, role_id, pipeline_id)
+        SELECT id, 'B'::app.stage_group, 'pending', ${tokenB}, ${expiresAt}, ${role_id ?? null}::uuid, ${pipelineId}::uuid
         FROM c
         RETURNING id AS session_id, resume_token, 'B' AS stage
       )
@@ -70,7 +71,15 @@ export async function POST(req: NextRequest) {
     const inviteUrl = `${base}/s/${rowA.resume_token}`;
 
     if (send_email) {
-      await sendInviteEmail({ to: email, inviteUrl, stage: 'AB', expiresAt, roleName, sessionId: rowA.session_id }).catch(
+      await sendInviteEmail({
+        to: email,
+        inviteUrl,
+        stage: 'AB',
+        expiresAt,
+        roleName,
+        sessionId: rowA.session_id,
+        purpose: 'pipeline_stage_a_initial',
+      }).catch(
         (e) => console.error('[sessions/create] email failed:', e),
       );
     }
@@ -78,6 +87,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       invite_url: inviteUrl,
       session_id: rowA.session_id,
+      pipeline_id: pipelineId,
       pipeline: true,
       email_queued: send_email,
     });

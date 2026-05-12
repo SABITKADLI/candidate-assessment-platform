@@ -18,3 +18,20 @@ test('SQL migrations are ordered and wrapped in explicit transactions', async ()
     assert.match(sql, /\bCOMMIT\b/i, `${file} should commit a transaction`);
   }
 });
+
+test('pipeline and email reconciliation migration includes required fields', async () => {
+  const sql = await readFile(path.join(migrationsDir, '0013_pipeline_email_resume_identity.sql'), 'utf8');
+  for (const token of [
+    'pipeline_id',
+    'purpose',
+    'last_event',
+    'last_event_at',
+    'last_polled_at',
+    'email_webhook_events',
+    'email_log_pipeline_stage_b_once_idx',
+    'rationale',
+    'upload_kind',
+  ]) {
+    assert.match(sql, new RegExp(token), `0013 should include ${token}`);
+  }
+});

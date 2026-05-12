@@ -43,6 +43,7 @@ export async function POST(
     stage,
     expiresAt: row.expires_at,
     sessionId: id,
+    purpose: 'manual_resend',
   });
 
   return NextResponse.json({ ok: true });

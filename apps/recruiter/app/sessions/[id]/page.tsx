@@ -790,7 +790,7 @@ export default async function SessionDetailPage({
                 </thead>
                 <tbody>
                   {emailLog.map((e) => {
-                    const isFailed  = e.status === 'failed' || e.status === 'bounced' || e.status === 'complained';
+                    const isFailed  = e.status === 'failed' || e.status === 'bounced' || e.status === 'complained' || e.status === 'suppressed';
                     const isOk      = e.status === 'delivered';
                     const statusColor = isOk
                       ? 'var(--cap-success)'

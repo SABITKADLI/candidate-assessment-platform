@@ -16,6 +16,7 @@
     "@aws-sdk/s3-request-presigner": "^3.670.0",
     "@cap/antibot": "workspace:*",
     "@cap/db": "workspace:*",
+    "@cap/mailer": "workspace:*",
     "@cap/shared": "workspace:*",
     "@cap/ui": "workspace:*",
     "bullmq": "^5.21.2",

@@ -115,8 +115,10 @@ export function IdLivenessCheck() {
     if (!idBlob || !livenessBlob) return;
     setStep('uploading');
 
+    let idArtifactId: string;
+    let livenessArtifactId: string;
     try {
-      await Promise.all([
+      [idArtifactId, livenessArtifactId] = await Promise.all([
         uploadArtifactDirect({
           kind: 'id_photo',
           blob: idBlob,
@@ -140,7 +142,14 @@ export function IdLivenessCheck() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ stage_key: 'A_ID_LIVENESS' }),
+      body: JSON.stringify({
+        stage_key: 'A_ID_LIVENESS',
+        payload: {
+          id_artifact_id: idArtifactId,
+          liveness_artifact_id: livenessArtifactId,
+          challenge,
+        },
+      }),
     });
     if (!completeRes.ok) {
       const j = await completeRes.json().catch(() => ({})) as { error?: string };

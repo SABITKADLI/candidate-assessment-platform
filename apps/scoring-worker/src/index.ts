@@ -8,6 +8,7 @@ import { Redis } from 'ioredis';
 import pino from 'pino';
 import { z } from 'zod';
 import { sql, auditLog } from '@cap/db';
+import { startResendStatusPoller } from '@cap/mailer';
 import { zStageKey } from '@cap/shared';
 import {
   SANDBOX_DONE_QUEUE,
@@ -147,12 +148,14 @@ sandboxDoneWorker.on('failed', (j, err) => log.error({ id: j?.id, err: err.messa
 sandboxDoneWorker.on('error',  (err) => log.error({ err: err.message }, 'sandbox_done_worker.error'));
 
 const stopOutbox = startOutboxLoop(Number(process.env.OUTBOX_INTERVAL_MS ?? 5000));
+const stopResendPoller = startResendStatusPoller(Number(process.env.RESEND_STATUS_POLL_INTERVAL_MS ?? 60_000));
 
 for (const sig of ['SIGINT', 'SIGTERM'] as const) {
   process.on(sig, async () => {
     log.info({ sig }, 'shutting down');
     stopHeartbeat();
     stopOutbox();
+    stopResendPoller();
     await sandboxDoneWorker.close();
     await stageWorker.close();
     await finalizeWorker.close();

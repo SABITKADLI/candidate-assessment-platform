@@ -5,7 +5,7 @@ import { GraderResult as zGraderResult } from '@cap/graders';
 
 export interface ClaudeGradeArgs {
   system: string;
-  user: string;
+  user: string | ClaudeContentBlock[];
   fallback: GraderResult;
 }
 
@@ -21,6 +21,17 @@ export interface ClaudeGradeResult {
 
 const MODEL = process.env.GRADER_MODEL ?? 'claude-sonnet-4-6';
 
+export type ClaudeContentBlock =
+  | { type: 'text'; text: string }
+  | {
+      type: 'image';
+      source: {
+        type: 'base64';
+        media_type: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+        data: string;
+      };
+    };
+
 let _client: Anthropic | null = null;
 
 function anthropic(): Anthropic | null {
@@ -34,7 +45,7 @@ export function promptHash(...parts: string[]): string {
 }
 
 export async function gradeWithClaude(args: ClaudeGradeArgs): Promise<ClaudeGradeResult> {
-  const hash = promptHash(args.system, args.user);
+  const hash = promptHash(args.system, userHashInput(args.user));
   const started = Date.now();
   const client = anthropic();
 
@@ -59,7 +70,7 @@ export async function gradeWithClaude(args: ClaudeGradeArgs): Promise<ClaudeGrad
     model: MODEL,
     max_tokens: 1400,
     system: args.system,
-    messages: [{ role: 'user', content: args.user }],
+    messages: [{ role: 'user', content: args.user as never }],
   });
 
   const raw = msg.content
@@ -100,4 +111,16 @@ export async function gradeWithClaude(args: ClaudeGradeArgs): Promise<ClaudeGrad
 
 function stripCodeFence(raw: string): string {
   return raw.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+}
+
+function userHashInput(user: string | ClaudeContentBlock[]): string {
+  if (typeof user === 'string') return user;
+  return JSON.stringify(user.map((block) => {
+    if (block.type === 'text') return block;
+    return {
+      type: 'image',
+      media_type: block.source.media_type,
+      data_hash: createHash('sha256').update(block.source.data).digest('hex'),
+    };
+  }));
 }

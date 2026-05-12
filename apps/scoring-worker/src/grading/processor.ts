@@ -189,7 +189,7 @@ async function insertRun(stageAttemptId: string, run: RunDraft): Promise<string>
     INSERT INTO app.score_runs (
       stage_attempt_id, grader_version, model, pass_no, score, subscores,
       evidence, confidence, flags, prompt_hash, raw_response,
-      input_token_count, output_token_count, latency_ms
+      input_token_count, output_token_count, latency_ms, rationale
     ) VALUES (
       ${stageAttemptId}::uuid,
       ${run.grader_version},
@@ -204,7 +204,8 @@ async function insertRun(stageAttemptId: string, run: RunDraft): Promise<string>
       ${run.raw_response ?? null},
       ${run.input_token_count ?? null},
       ${run.output_token_count ?? null},
-      ${run.latency_ms ?? null}
+      ${run.latency_ms ?? null},
+      ${run.rationale ?? run.result.rationale ?? null}
     )
     RETURNING id
   `;

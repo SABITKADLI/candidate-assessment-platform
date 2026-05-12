@@ -10,6 +10,7 @@ export type ScoreRunView = {
   evidence: Array<{ kind?: string; value?: string; refers_to?: string }>;
   confidence: string | null;
   flags: string[];
+  rationale?: string | null;
 };
 
 const SEVERE = new Set(['ai_generated_suspected', 'plagiarism_suspected', 'identity_mismatch']);
@@ -60,6 +61,11 @@ export function ScoreBreakdownCard({ run }: { run: ScoreRunView }) {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 14 }}>
           {run.flags.map((flag) => <GraderFlagBadge key={flag} flag={flag} />)}
         </div>
+      ) : null}
+      {run.rationale ? (
+        <p style={{ margin: '14px 0 0', fontSize: 12, lineHeight: 1.55, color: 'var(--cap-fg-2)' }}>
+          {run.rationale}
+        </p>
       ) : null}
     </Card>
   );

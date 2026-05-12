@@ -27,6 +27,7 @@ export interface RunDraft {
   input_token_count?: number;
   output_token_count?: number;
   latency_ms?: number;
+  rationale?: string;
 }
 
 export interface GradeOutcome {

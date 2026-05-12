@@ -26,11 +26,13 @@ function EmailBadge({ summary, sessionId }: { summary: EmailSummary | undefined;
   const { status, opened, clicked } = summary;
   const statusCfg: Record<EmailStatus, { icon: React.ReactNode; color: string; label: string }> = {
     queued:    { icon: <Mail      size={12} strokeWidth={2} />, color: 'var(--cap-fg-3)',    label: 'queued'    },
+    scheduled: { icon: <Mail      size={12} strokeWidth={2} />, color: 'var(--cap-fg-3)',    label: 'scheduled' },
     sending:   { icon: <Mail      size={12} strokeWidth={2} />, color: 'var(--cap-accent)',  label: 'sending'   },
     delivered: { icon: <MailCheck size={12} strokeWidth={2} />, color: 'var(--cap-success)', label: 'delivered' },
     bounced:   { icon: <MailX     size={12} strokeWidth={2} />, color: 'var(--cap-danger)',  label: 'bounced'   },
     complained:{ icon: <MailX     size={12} strokeWidth={2} />, color: 'var(--cap-danger)',  label: 'complaint' },
     failed:    { icon: <MailX     size={12} strokeWidth={2} />, color: 'var(--cap-danger)',  label: 'failed'    },
+    suppressed:{ icon: <MailX     size={12} strokeWidth={2} />, color: 'var(--cap-danger)',  label: 'suppressed'},
   };
   const c = statusCfg[status] ?? statusCfg.queued;
 
