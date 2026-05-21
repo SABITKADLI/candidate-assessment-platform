@@ -7,6 +7,7 @@ WORKDIR /app
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/db/package.json ./packages/db/
 COPY packages/graders/package.json ./packages/graders/
+COPY packages/mailer/package.json ./packages/mailer/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/config-ts/package.json ./packages/config-ts/
 COPY apps/scoring-worker/package.json ./apps/scoring-worker/
@@ -16,6 +17,7 @@ RUN pnpm install --frozen-lockfile --filter @cap/scoring-worker...
 # Copy source
 COPY packages/db/ ./packages/db/
 COPY packages/graders/ ./packages/graders/
+COPY packages/mailer/ ./packages/mailer/
 COPY packages/shared/ ./packages/shared/
 COPY packages/config-ts/ ./packages/config-ts/
 COPY apps/scoring-worker/ ./apps/scoring-worker/
