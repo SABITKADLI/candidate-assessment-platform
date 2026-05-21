@@ -25,20 +25,38 @@ const SECRETS: Record<Provider, string | undefined> = {
 };
 
 const MAX_ATTEMPTS = 8;
+const DEFAULT_IDLE_INTERVAL_MS = 10 * 60_000;
 
-export function startOutboxLoop(intervalMs = 5_000): () => void {
+export function hasOutboxDeliveryConfig(): boolean {
+  return (Object.keys(URLS) as Provider[]).some((provider) => Boolean(URLS[provider] || SECRETS[provider]));
+}
+
+export function startOutboxLoop(intervalMs = 5_000, idleIntervalMs = DEFAULT_IDLE_INTERVAL_MS): () => void {
   let stopped = false;
+  let idleTicks = 0;
+
   const tick = async () => {
     if (stopped) return;
-    try { await drain(); }
-    catch (e) { log.error({ err: String(e) }, 'outbox.drain.error'); }
-    if (!stopped) setTimeout(tick, intervalMs).unref();
+
+    let processed = 0;
+    try {
+      processed = await drain();
+    } catch (e) {
+      log.error({ err: String(e) }, 'outbox.drain.error');
+    }
+
+    idleTicks = processed > 0 ? 0 : Math.min(idleTicks + 1, 8);
+    const nextDelay = processed > 0
+      ? intervalMs
+      : Math.min(idleIntervalMs, intervalMs * 2 ** idleTicks);
+
+    if (!stopped) setTimeout(tick, nextDelay).unref();
   };
   void tick();
   return () => { stopped = true; };
 }
 
-async function drain(): Promise<void> {
+async function drain(): Promise<number> {
   // SKIP LOCKED lets multiple scoring-worker replicas share the queue safely.
   const rows = await sql<Array<{
     id: string; session_id: string; ats: Provider;
@@ -58,9 +76,10 @@ async function drain(): Promise<void> {
      WHERE o.id = due.id
     RETURNING o.id, o.session_id, o.ats, o.payload, o.attempts
   `;
-  if (!rows.length) return;
+  if (!rows.length) return 0;
 
   await Promise.allSettled(rows.map(deliver));
+  return rows.length;
 }
 
 async function deliver(r: { id: string; session_id: string; ats: Provider; payload: unknown; attempts: number }): Promise<void> {

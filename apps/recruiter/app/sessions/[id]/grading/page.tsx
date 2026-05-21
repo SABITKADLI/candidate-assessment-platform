@@ -5,6 +5,7 @@ import { Sidebar, Card, ProgressBar } from '@cap/ui';
 import { BackLink } from '@/lib/BackLink';
 import { OverrideForm } from '@/lib/OverrideForm';
 import { EvidenceList, GraderFlagBadge, ScoreBreakdownCard, type ScoreRunView } from '@/lib/grading-ui';
+import { tableColumnExists } from '@/lib/schemaCompat';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,11 +76,13 @@ export default async function SessionGradingPage({ params }: { params: Promise<{
     FROM app.score_reconciliations
     WHERE stage_attempt_id = ANY(${attempts.map((attempt) => attempt.id)}::uuid[])
   `;
+  const hasRunRationale = await tableColumnExists('app', 'score_runs', 'rationale');
   const runs = attempts.length
     ? await sql<ScoreRunView[]>`
         SELECT id, stage_attempt_id, grader_version, model, pass_no,
                score::text AS score, subscores, evidence, confidence::text AS confidence,
-               flags, rationale
+               flags,
+               ${hasRunRationale ? sql`rationale` : sql`NULL::text AS rationale`}
         FROM app.score_runs
         WHERE stage_attempt_id = ANY(${attempts.map((attempt) => attempt.id)}::uuid[])
         ORDER BY stage_attempt_id, pass_no, created_at DESC

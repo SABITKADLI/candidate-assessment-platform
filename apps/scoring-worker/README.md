@@ -48,8 +48,14 @@ prompt.
 
 ## Outbox semantics
 
+- The outbox poller is disabled when no `ATS_*_URL` or `ATS_*_SECRET`
+  variable is configured, so an idle deployment does not keep the database
+  awake just to scan an empty table.
+
 - `SELECT ... FOR UPDATE SKIP LOCKED` — multiple replicas can share the
   queue without double-delivery.
+- `OUTBOX_INTERVAL_MS` controls active drain cadence; `OUTBOX_IDLE_INTERVAL_MS`
+  controls the maximum empty-queue backoff.
 - Signing: `X-Cap-Signature: sha256=hex(hmac_sha256(secret, ts + "." + body))`
   with `X-Cap-Timestamp`. Receivers MUST reject if `abs(now - ts) > 5 min`.
 - Giveup after 8 attempts (max 1 h backoff); `last_error` preserved for ops.
@@ -61,6 +67,7 @@ prompt.
 ```
 DATABASE_URL=postgres://...
 REDIS_URL=redis://...
+DATABASE_POOL_MAX=3
 
 # Memo (optional)
 ANTHROPIC_API_KEY=...
@@ -77,6 +84,8 @@ ATS_LEVER_URL=
 ATS_LEVER_SECRET=
 ATS_WORKDAY_URL=
 ATS_WORKDAY_SECRET=
+OUTBOX_INTERVAL_MS=5000
+OUTBOX_IDLE_INTERVAL_MS=600000
 ```
 
 After filling any real provider pair, run a signed connection check before

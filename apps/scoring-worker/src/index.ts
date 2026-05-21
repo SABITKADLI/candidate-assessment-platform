@@ -19,7 +19,7 @@ import {
 import { computeComposite } from './composite.js';
 import { generateMemo } from './memo.js';
 import { enqueueAts, type AtsProvider } from './ats.js';
-import { startOutboxLoop } from './outbox.js';
+import { hasOutboxDeliveryConfig, startOutboxLoop } from './outbox.js';
 import { processSandboxDone, processStageScore, sessionReadyForFinalization } from './grading/processor.js';
 
 const zJob = z.object({
@@ -147,7 +147,16 @@ const sandboxDoneWorker = new Worker<StageScoreJob>(
 sandboxDoneWorker.on('failed', (j, err) => log.error({ id: j?.id, err: err.message }, 'sandbox_done.failed'));
 sandboxDoneWorker.on('error',  (err) => log.error({ err: err.message }, 'sandbox_done_worker.error'));
 
-const stopOutbox = startOutboxLoop(Number(process.env.OUTBOX_INTERVAL_MS ?? 5000));
+const outboxDeliveryConfigured = hasOutboxDeliveryConfig();
+const stopOutbox = outboxDeliveryConfigured
+  ? startOutboxLoop(
+      Number(process.env.OUTBOX_INTERVAL_MS ?? 5000),
+      Number(process.env.OUTBOX_IDLE_INTERVAL_MS ?? 10 * 60_000),
+    )
+  : (() => undefined);
+if (!outboxDeliveryConfigured) {
+  log.info('outbox.disabled.no_ats_config');
+}
 const stopResendPoller = startResendStatusPoller(Number(process.env.RESEND_STATUS_POLL_INTERVAL_MS ?? 60_000));
 
 for (const sig of ['SIGINT', 'SIGTERM'] as const) {

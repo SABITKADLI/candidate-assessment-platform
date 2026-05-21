@@ -14,7 +14,7 @@ function make() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL not set');
   return postgres(url, {
-    max: Number(process.env.DATABASE_POOL_MAX ?? 10),
+    max: Number(process.env.DATABASE_POOL_MAX ?? 3),
     idle_timeout: 20,
     connect_timeout: 10,
     prepare: true,

@@ -234,12 +234,14 @@ Flags lower the composite via `proctoring_mult` (floor 0.5×). Recruiters resolv
 | Variable | Required | Purpose |
 |---|---|---|
 | `DATABASE_URL` | Yes | PostgreSQL |
+| `DATABASE_POOL_MAX` | No | Per-process Postgres connection cap; keep low on Neon/free tiers |
 | `REDIS_URL` | Yes | BullMQ |
 | `ANTHROPIC_API_KEY` | No | Claude memo generation |
 | `S3_BUCKET` / `AWS_REGION` / `AWS_*` | No | Memo upload |
 | `ATS_GREENHOUSE_URL` + `ATS_GREENHOUSE_SECRET` | No | Greenhouse webhook |
 | `ATS_LEVER_URL` + `ATS_LEVER_SECRET` | No | Lever webhook |
 | `ATS_WORKDAY_URL` + `ATS_WORKDAY_SECRET` | No | Workday webhook |
+| `OUTBOX_INTERVAL_MS` / `OUTBOX_IDLE_INTERVAL_MS` | No | ATS outbox active cadence and empty-queue backoff |
 
 ### `apps/sandbox-worker`
 | Variable | Required | Purpose |

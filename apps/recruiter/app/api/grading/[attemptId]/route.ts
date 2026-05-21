@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { sql } from '@cap/db';
 import { auth0, auth0Configured } from '@/lib/auth0';
 import { presignGet } from '@/lib/s3';
+import { tableColumnExists } from '@/lib/schemaCompat';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -36,10 +37,13 @@ export async function GET(
     WHERE stage_attempt_id = ${attemptId}::uuid
   `;
 
+  const hasRunRationale = await tableColumnExists('app', 'score_runs', 'rationale');
   const runs = await sql`
     SELECT id, grader_version, model, pass_no, score::text AS score, subscores,
            evidence, confidence::text AS confidence, flags, prompt_hash,
-           input_token_count, output_token_count, latency_ms, rationale, created_at
+           input_token_count, output_token_count, latency_ms,
+           ${hasRunRationale ? sql`rationale` : sql`NULL::text AS rationale`},
+           created_at
     FROM app.score_runs
     WHERE stage_attempt_id = ${attemptId}::uuid
     ORDER BY pass_no ASC, created_at DESC
