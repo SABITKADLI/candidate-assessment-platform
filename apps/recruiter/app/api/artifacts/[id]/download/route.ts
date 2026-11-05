@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { auth0, auth0Configured } from '@/lib/auth0';
+import { requireRecruiterApiSession } from '@/lib/auth0';
 import { sql } from '@cap/db';
 import { presignGet } from '@/lib/s3';
 
@@ -10,9 +10,8 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  if (!auth0Configured) return new Response('Unauthorized', { status: 401 });
-  const session = await auth0.getSession();
-  if (!session) return new Response('Unauthorized', { status: 401 });
+  const auth = await requireRecruiterApiSession();
+  if (!auth.ok) return auth.response;
 
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return new Response('Not found', { status: 404 });

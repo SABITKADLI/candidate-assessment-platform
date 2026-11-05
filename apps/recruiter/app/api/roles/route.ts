@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { sql } from '@cap/db';
-import { auth0, auth0Configured } from '@/lib/auth0';
+import { requireRecruiterApiSession } from '@/lib/auth0';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -15,10 +15,8 @@ const zRole = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  if (auth0Configured) {
-    const session = await auth0.getSession();
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = await requireRecruiterApiSession();
+  if (!auth.ok) return auth.response;
 
   const roles = await sql<{
     id: string; name: string; description: string | null;
@@ -35,10 +33,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (auth0Configured) {
-    const session = await auth0.getSession();
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = await requireRecruiterApiSession();
+  if (!auth.ok) return auth.response;
 
   const body = await req.json().catch(() => null);
   const parsed = zRole.safeParse(body);

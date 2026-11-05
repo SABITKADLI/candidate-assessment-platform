@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@cap/db';
-import { auth0, auth0Configured } from '@/lib/auth0';
+import { requireRecruiterApiSession } from '@/lib/auth0';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
-  if (auth0Configured) {
-    const session = await auth0.getSession();
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = await requireRecruiterApiSession();
+  if (!auth.ok) return auth.response;
 
   const search = req.nextUrl.searchParams;
   const flags = split(search.get('flags'));

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { sql } from '@cap/db';
-import { auth0, auth0Configured } from '@/lib/auth0';
+import { requireRecruiterApiSession } from '@/lib/auth0';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -18,10 +18,8 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  if (auth0Configured) {
-    const session = await auth0.getSession();
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = await requireRecruiterApiSession();
+  if (!auth.ok) return auth.response;
   const { id } = await params;
 
   const [role] = await sql<{
@@ -42,10 +40,8 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  if (auth0Configured) {
-    const session = await auth0.getSession();
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = await requireRecruiterApiSession();
+  if (!auth.ok) return auth.response;
   const { id } = await params;
   const body = await req.json().catch(() => null);
   const parsed = zUpdate.safeParse(body);
@@ -74,10 +70,8 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  if (auth0Configured) {
-    const session = await auth0.getSession();
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = await requireRecruiterApiSession();
+  if (!auth.ok) return auth.response;
   const { id } = await params;
 
   await sql`UPDATE app.sessions SET role_id = NULL WHERE role_id = ${id}::uuid`;

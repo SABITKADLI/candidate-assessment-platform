@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@cap/db';
-import { auth0, auth0Configured } from '@/lib/auth0';
+import { requireRecruiterApiSession } from '@/lib/auth0';
 import { sendInviteEmail } from '@/lib/sendInviteEmail';
 
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  if (auth0Configured) {
-    const session = await auth0.getSession();
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = await requireRecruiterApiSession();
+  if (!auth.ok) return auth.response;
 
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) {

@@ -1,5 +1,5 @@
 import { sql } from '@cap/db';
-import { auth0, auth0Configured } from './auth0';
+import { recruiterAccess } from './auth0';
 
 export interface ReviewerIdentity {
   id: string;
@@ -9,11 +9,9 @@ export interface ReviewerIdentity {
 }
 
 export async function requireReviewer(): Promise<ReviewerIdentity> {
-  if (!auth0Configured) return upsertUser('dev-recruiter', 'dev-recruiter@example.local', 'Dev Recruiter');
-
-  const session = await auth0.getSession();
-  if (!session) throw new Error('Unauthorized');
-  const user = session.user as { sub?: string; email?: string; name?: string };
+  const access = await recruiterAccess();
+  if (access.status !== 'authenticated') throw new Error('Unauthorized');
+  const user = access.session.user as { sub?: string; email?: string; name?: string };
   const sub = user.sub;
   if (!sub) throw new Error('Auth0 subject missing');
   return upsertUser(sub, user.email ?? null, user.name ?? null);

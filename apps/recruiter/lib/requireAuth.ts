@@ -1,11 +1,11 @@
 import { redirect } from 'next/navigation';
-import { auth0, auth0Configured } from './auth0';
+import { recruiterAccess } from './auth0';
 
 export async function requireRecruiterSession() {
-  if (!auth0Configured) redirect('/');
-
-  const session = await auth0.getSession();
-  if (!session) redirect('/auth/login');
-
-  return session;
+  const access = await recruiterAccess();
+  if (access.status === 'misconfigured') {
+    throw new Error('Auth0 configuration is incomplete or invalid');
+  }
+  if (access.status === 'unauthorized') redirect('/auth/login');
+  return access.session;
 }
